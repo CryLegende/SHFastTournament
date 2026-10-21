@@ -1,0 +1,505 @@
+# shfasttournament.admin pour l'accès à la commande
+settings:
+  minimum-players: 10 # 20 # Minimum amount of players required to start a tournament
+  interval: 24-40 # in min (peut être une plage, par exemple "10-20", ou un seul nombre comme "3")
+  join-message-delay: 3 # en sec, delai avant d'annoncer le tournoi en cours a un joueur qui se connecte
+  
+  sounds:
+    tournament-start: ENTITY_EXPERIENCE_ORB_PICKUP
+    tournament-end: ENTITY_PLAYER_LEVELUP
+  
+  rewards: # Chaque récompense est définie par top1, top2, top3 et participation
+    top1:
+    - sm %player% &7&l« &a&lSH &8&l» &7Vous avez fini &a1er &7 !
+    - 'sm %player% &7(Récompenses: 10k SHCoins, 2 Luckyblocks Jaune, 2 Clés Ordinaire)'
+    - eco give %player% 10000
+    - shwc %player% ntdluckyblock give %player% YELLOW 2
+    - shwc %player% shcrates givekey %player% ordinaire 2 physical
+    - shnetworklevel exp give %player% 10
+    - sm %player% &b+10 exp de network &7(/network)
+    top2:
+    - sm %player% &7&l« &e&lSH &8&l» &7Vous avez fini &e2eme &7 !
+    - 'sm %player% &7(Récompenses: 10k SHCoins, 1 Luckyblock Jaune, 1 Clé Ordinaire)'
+    - eco give %player% 10000
+    - shwc %player% ntdluckyblock give %player% YELLOW 1
+    - shwc %player% shcrates givekey %player% ordinaire 1 physical
+    - shnetworklevel exp give %player% 5
+    - sm %player% &b+5 exp de network &7(/network)
+    top3:
+    - sm %player% &7&l« &6&lSH &8&l» &7Vous avez fini &63eme &7 !
+    - 'sm %player% &7(Récompense: 1 Clé Ordinaire)'
+    - shwc %player% shcrates givekey %player% ordinaire 1 physical
+    - shnetworklevel exp give %player% 5
+    - sm %player% &b+5 exp de network &7(/network)
+    participation:
+    - 'sm %player% &7(Récompense de participation: 5k SHCoins)'
+    - eco give %player% 5000
+
+messages:
+  tournament-start:
+  - '&f█████████'
+  - '&f█&8███&f█&8█&f█&8█&f█'
+  - '&f█&8█&f███&8█&f█&8█&f█       &5♥♠ &5&lMini tournois &5♣♦'
+  - '&f█&8███&f█&8███&f█'
+  - '&f███&8█&f█&8█&f█&8█&f█       &7[ &a%event-name% &7] &8(%duration%)'
+  - '&f█&8███&f█&8█&f█&8█&f█ &7%description%'
+  - '&f█████████'
+  tournament-end:
+  - ''
+  - '&7&l« &5&lMini tournoi &8&l» &7Fin du tournoi: &a%event-name%'
+  - '&e&lClassement'
+  - '%results%'
+  - ''
+  # Envoye a un joueur qui se connecte pendant un tournoi. Liste vide = desactive.
+  # Placeholders: %event-id% %event-name% %event-type% %description% %points-name% %participants% %time-left% %time-elapsed% %time-total%
+  tournament-join:
+  - ''
+  - '&7&l« &5&lMini tournoi &8&l» &7Un mini tournoi est en cours: &a%event-name%'
+  - '&f  ➥ &7%description%'
+  - '&f  ➥ &7Temps restant: &f%time-left% &8| &7Participants: &f%participants%'
+  - ''
+  results: '&f • &7(&e#%place%&7) &e%player% &7- %points% %points-name%'
+  personal-results: 'Vous: &7(&e#%place%&7) - &e%points% %points-name%'
+  no-participation: '&7&l« &6&lSH &8&l» &7Vous n''avez pas participé à ce mini tournoi'
+  no-winner: '&7&l« &c&lSH &8&l» &fPersonne n''a participé à ce tournoi'
+  actionbar: ''
+  # actionbar: '&5&lMini tournoi: &e%points% &7%points-name% (&e%time% sec restantes&7)'
+  boss-bar: '&5&lMini tournoi: &e%event-name% &7- &e%points% &7%points-name% - (&f%time%&7)'
+  unknown-command: '&7&l« &f&lSH &8&l» &fCommande inconnue, essayer autre chose.'
+  no-perm: '&7&l« &f&lSH &8&l» &fCommande inconnue, essayer autre chose.'
+  stop-success: '&7&l« &a&lSH &8&l» &7Le mini tournoi en cours a été arrêté.'
+  stop-fail: '&7&l« &c&lSH &8&l» &cThere is no playing tournament !'
+  start-success: '&7&l« &a&lSH &8&l» &aThe tournament %id% has just started.'
+  already-playing: '&7&l« &c&lSH &8&l» &cA tournament is already running !'
+  not-an-id: '&7&l« &c&lSH &8&l» &cThe id %id% is not a valid tournament id !'
+  status-no-active: '&7&l« &c&lSH &8&l» &cAucun mini tournoi en cours.'
+  status-no-leader: Aucun
+  tournament-status:
+  - '&f█████████'
+  - '&f█&8███&f█&8█&f█&8█&f█'
+  - '&f█&8█&f███&8█&f█&8█&f█       &5♥♠ &5&lStatut tournoi &5♣♦'
+  - '&f█&8███&f█&8███&f█'
+  - '&f███&8█&f█&8█&f█&8█&f█       &7[ &a%event-name% &7] &8(ID: %event-id%)'
+  - '&f█&8███&f█&8█&f█&8█&f█ &7Type: &f%event-type% &8| &7Participants: &f%participants%'
+  - '&f█&8█&f███&8█&f█&8█&f█ &7Temps: &f%time-elapsed%&8/&f%time-total% &8(reste:
+    &f%time-left%&8)'
+  - '&f███&8█&f█&8█&f█&8█&f█ &7Leader: &e%leader% &8- &e%leader-points% &7%points-name%'
+  - '&f█████████'
+
+tournaments:
+  pro-peche:
+    enabled: false
+    time: 1
+    display-name: Pro de la pêche
+    description: Pechez le plus d'items pour gagner !
+    type: FISHING
+    objective: NONE
+    blacklist: NONE
+    points-name: item(s) peché(s)
+    boss-bar: BLUE
+    worlds-blacklist:
+    - arene
+  tueur-de-Zombies:
+    enabled: true
+    time: 10 # min
+    display-name: Tueur de Zombies
+    description: Tuez un maximum de Zombies
+    type: KILL_ENTITY # BLOCK_BREAK, BLOCK_PLACE, KILL_ENTITY, TAKE_DAMAGE, MAKE_DAMAGE, FISHING, JUMP, WALK, ITEM_PICKUP, SMELT, CROPS_BREAK, CRAFT
+    objective: ZOMBIE # "NONE" ou IDs séparés par des virgules
+    blacklist: NONE # "NONE" ou IDs séparés par des virgules
+    points-name: Zombie(s) tué(s)
+    boss-bar: GREEN # BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW ou NONE
+    worlds-blacklist:
+    - spawn
+    - arene
+  damage-dealer:
+    enabled: true
+    time: 10
+    display-name: Damage Dealer
+    description: Faites le plus de dégâts pour gagner !
+    type: MAKE_DAMAGE
+    objective: NONE
+    blacklist: ARMOR_STAND
+    points-name: dégats effectué(s)
+    boss-bar: RED
+    worlds-blacklist:
+    - spawn
+    - arene
+  Coupe-feuilles:
+    enabled: true
+    time: 10
+    display-name: Coupe-feuilles
+    description: Coupez le plus de feuilles pour gagner !
+    type: BLOCK_BREAK
+    objective: OAK_LEAVES,BIRCH_LEAVES,DARK_OAK_LEAVES,ACACIA_LEAVES,SPRUCE_LEAVES,JUNGLE_LEAVES,AZALEA_LEAVES,MANGROVE_LEAVES,CHERRY_LEAVES,AZALEA_LEAVES,FLOWERING_AZALEA_LEAVES
+    blacklist: NONE
+    points-name: feuilles(s) cassée(s)
+    boss-bar: GREEN
+    worlds-blacklist:
+    - spawn
+    - arene
+  Bucheron:
+    enabled: true
+    time: 10
+    display-name: Bûcheron
+    description: Cassez le plus de bois pour gagner !
+    type: BLOCK_BREAK
+    objective: OAK_LOG,BIRCH_LOG,DARK_OAK_LOG,ACACIA_LOG,SPRUCE_LOG,JUNGLE_LOG,AZALEA_LOG,CHERRY_LOG,STRIPPED_OAK_LOG,STRIPPED_BIRCH_LOG,STRIPPED_DARK_OAK_LOG,STRIPPED_ACACIA_LOG,STRIPPED_SPRUCE_LOG,STRIPPED_JUNGLE_LOG,STRIPPED_AZALEA_LOG,STRIPPED_CHERRY_LOG
+    blacklist: NONE
+    points-name: bloc(s) cassée(s)
+    boss-bar: WHITE
+    worlds-blacklist:
+    - spawn
+    - arene
+  mob-killer:
+    enabled: true
+    time: 10
+    display-name: Tueur de mobs
+    description: Tuez le plus de mobs pour gagner
+    type: KILL_ENTITY
+    objective: NONE
+    blacklist: NONE
+    points-name: mob(s) tué(s)
+    boss-bar: RED
+    worlds-blacklist:
+    - spawn
+    - arene
+  fishing:
+    enabled: true
+    time: 10
+    display-name: Pêcheur
+    description: Pêchez le plus de poissons pour gagner
+    type: FISHING
+    objective: SALMON,COD,TROPICAL_FISH,PUFFERFISH
+    blacklist: NONE
+    points-name: poisson(s) peché(s)
+    boss-bar: BLUE
+    worlds-blacklist:
+    - arene
+  Builder:
+    enabled: true
+    time: 10
+    display-name: Builder
+    description: Placez le plus de blocs pour gagner !
+    type: BLOCK_PLACE
+    objective: NONE
+    blacklist: NONE
+    points-name: bloc(s) placé(s)
+    boss-bar: PURPLE
+    worlds-blacklist:
+    - spawn
+    - arene
+  mineur-pierre:
+    enabled: true
+    time: 10
+    display-name: Mineur de pierre
+    description: Minez le plus de pierre pour gagner !
+    type: BLOCK_BREAK
+    objective: STONE,COBBLESTONE
+    blacklist: NONE
+    points-name: bloc(s) minés(s)
+    boss-bar: WHITE
+    worlds-blacklist:
+    - spawn
+    - arene
+  fonderie:
+    enabled: true
+    time: 15
+    display-name: Fonderie
+    description: Fondez le plus d'items pour gagner !
+    type: SMELT
+    objective: NONE
+    blacklist: NONE
+    points-name: items(s) fondues(s)
+    boss-bar: RED
+    worlds-blacklist:
+    - spawn
+    - arene
+  Jogger:
+    enabled: true
+    time: 10
+    display-name: Jogger
+    description: Marchez le plus pour gagner !
+    type: WALK
+    objective: NONE
+    blacklist: NONE
+    points-name: mètre(s) parcouru(s)
+    boss-bar: RED
+    worlds-blacklist:
+    - spawn
+    - arene
+  Jumper:
+    enabled: false
+    time: 10
+    display-name: jumper
+    description: Sautez le plus de fois pour gagner !
+    type: JUMP
+    objective: NONE
+    blacklist: NONE
+    points-name: saut(s) effectué(s)
+    boss-bar: RED
+    worlds-blacklist:
+    - spawn
+    - arene
+  Farmeur-patates:
+    enabled: true
+    time: 10
+    display-name: Potatoes
+    description: Récoltez le plus de patates pour gagner !
+    type: CROPS_BREAK
+    objective: POTATOES
+    blacklist: NONE
+    points-name: patates(s) récoltée(s)
+    boss-bar: YELLOW
+    worlds-blacklist:
+    - spawn
+    - arene
+  Farmeur-ble:
+    enabled: true
+    time: 10
+    display-name: Farmeur de blé
+    description: Récoltez le plus de blé pour gagner !
+    type: CROPS_BREAK
+    objective: WHEAT
+    blacklist: NONE
+    points-name: blé(s) récolté(s)
+    boss-bar: YELLOW
+    worlds-blacklist:
+    - spawn
+    - arene
+  Boulanger:
+    enabled: true
+    time: 10
+    display-name: Boulanger
+    description: Craftez le plus de pain pour gagner !
+    type: CRAFT
+    objective: BREAD
+    blacklist: NONE
+    points-name: Pain(s) crafté(s)
+    boss-bar: ORANGE
+    worlds-blacklist:
+    - spawn
+    - arene
+  Box:
+    enabled: true
+    time: 10
+    display-name: Clés en mains
+    description: Ouvrez le plus de box pour gagner !
+    type: CUSTOM
+    objective: BOX
+    blacklist: NONE
+    points-name: box(s) ouverte(s)
+    boss-bar: YELLOW
+    worlds-blacklist: []
+  
+  Craft-citrouilles:
+    enabled: true
+    time: 10
+    display-name: Patissier
+    description: Craftez le maximum de tartes à la citrouille
+    type: CRAFT
+    objective: PUMPKIN_PIE
+    blacklist: NONE
+    points-name: tarte(s) à la citrouille
+    boss-bar: ORANGE
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  # Opale
+  Chasseur-de-Squelettes:
+    enabled: true
+    time: 10 # min
+    display-name: Chasseur de Squelettes
+    description: Éliminez le plus de squelettes pour gagner !
+    type: KILL_ENTITY
+    objective: SKELETON
+    blacklist: NONE
+    points-name: squelette(s) tué(s)
+    boss-bar: WHITE
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  Mineur-de-Fer:
+    enabled: true
+    time: 10 # min
+    display-name: Mineur de Fer
+    description: Extrayez un maximum de minerai de fer !
+    type: BLOCK_BREAK
+    objective: IRON_ORE,DEEPSLATE_IRON_ORE
+    blacklist: NONE
+    points-name: minerai(s) de fer extrait(s)
+    boss-bar: YELLOW # Un peu ocre comme le fer
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  Farmeur-Carottes:
+    enabled: true
+    time: 10 # min
+    display-name: Farmeur de Carottes
+    description: Récoltez le plus de carottes possible !
+    type: CROPS_BREAK
+    objective: CARROTS
+    blacklist: NONE
+    points-name: carotte(s) récoltée(s)
+    boss-bar: ORANGE
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  Cultivateur-Verrues:
+    enabled: true
+    time: 10 # min
+    display-name: Cultivateur de Verrues
+    description: Récoltez un maximum de verrues du Nether.
+    type: CROPS_BREAK
+    objective: NETHER_WART
+    blacklist: NONE
+    points-name: verrue(s) du Nether récoltée(s)
+    boss-bar: RED
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  Chef-Cuistot-Viandes:
+    enabled: false
+    time: 10 # min
+    display-name: Barbecue
+    description: Faites cuire le plus de viandes !
+    type: SMELT
+    # Pour SMELT, l'objective devrait être les items BRUTS que l'on met à cuire
+    # et le plugin compte l'action de fondre ces items spécifiques.
+    objective: BEEF,PORKCHOP,CHICKEN,MUTTON,RABBIT
+    blacklist: NONE
+    points-name: viande(s) cuite(s)
+    boss-bar: RED # Couleur feu / cuisson
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  Chasseur-Tresors-Aquatiques:
+    enabled: true
+    time: 15 # Peut-être un peu plus long car les trésors sont rares
+    display-name: Trésors Aquatiques
+    description: Pêchez le plus de trésors rares !
+    type: FISHING
+    # Basé sur la catégorie "Trésor" de la pêche Minecraft
+    objective: BOW,ENCHANTED_BOOK,FISHING_ROD,NAME_TAG,NAUTILUS_SHELL,SADDLE
+    blacklist: NONE # On ne veut pas blacklister de trésors
+    points-name: trésor(s) pêché(s)
+    boss-bar: GOLD # Pour les trésors ! Ou YELLOW
+    worlds-blacklist:
+    - arene
+  
+  Grand-Terraformeur:
+    enabled: true
+    time: 10 # min
+    display-name: Grand Terraformeur
+    description: Placez le plus de terre, herbe ou sable !
+    type: BLOCK_PLACE
+    objective: DIRT,GRASS_BLOCK,SAND # Tu peux ajouter COBBLESTONE, STONE etc. si tu veux élargir
+    blacklist: NONE
+    points-name: bloc(s) de terraformation placé(s)
+    boss-bar: GREEN # Pour l'aspect nature/construction
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  Exterminateur-de-Creepers:
+    enabled: true
+    time: 10
+    display-name: '&a💣 Alerte à l''Explosif'
+    description: Éliminez un maximum de Creepers !
+    type: KILL_ENTITY
+    objective: CREEPER
+    blacklist: NONE
+    points-name: creeper(s) vaincu(s)
+    boss-bar: WHITE
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  Cultivateur-de-Vignes:
+    enabled: true
+    time: 10
+    display-name: '&2🌿 Jungle Verticale'
+    description: Récoltez le plus de lianes ou de Glow Lichen !
+    type: BLOCK_BREAK
+    objective: VINE,GLOW_LICHEN
+    blacklist: NONE
+    points-name: plante(s) grimpante(s)
+    boss-bar: GREEN
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  noel-bataille-neige:
+    enabled: false
+    time: 10
+    display-name: '&bNoël ❄ Bataille de neige'
+    description: Obtenez un maximum de boules de neige
+    type: BLOCK_BREAK
+    objective: SNOW
+    blacklist: NONE
+    points-name: boule(s) de neige
+    boss-bar: ORANGE
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  noel-pose-lanternes:
+    enabled: false
+    time: 15
+    display-name: '&eNoël 🏮 Pose de lanternes'
+    description: Illuminez votre île avec des lanternes
+    type: BLOCK_PLACE
+    objective: LANTERN
+    blacklist: NONE
+    points-name: lanterne(s)
+    boss-bar: YELLOW
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  noel-abattage-sapins:
+    enabled: false
+    time: 10
+    display-name: '&2Noël 🌲 Abattage de sapins'
+    description: Coupez un maximum de sapins
+    type: BLOCK_BREAK
+    objective: SPRUCE_LOG
+    blacklist: NONE
+    points-name: sapin(s)
+    boss-bar: GREEN
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  noel-recolte-cacao:
+    enabled: false
+    time: 10
+    display-name: '&6Noël 🍫 Récolte de cacao'
+    description: Récoltez un maximum de fèves de cacao
+    type: BLOCK_BREAK
+    objective: COCOA
+    blacklist: NONE
+    points-name: cacao(s)
+    boss-bar: BROWN
+    worlds-blacklist:
+    - spawn
+    - arene
+  
+  easter-Lapin:
+    enabled: false
+    time: 10
+    display-name: Pouf, des lapins
+    description: Attrapez le plus de lapins ! (&d/warp paques&7)
+    type: CUSTOM
+    objective: LAPIN
+    blacklist: NONE
+    points-name: lapin(s) attrapé(s)
+    boss-bar: PINK
+    worlds-blacklist: []
+
