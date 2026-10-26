@@ -112,6 +112,7 @@ public class TournamentManager {
                                 .collect(Collectors.toList());
                             if (enabledTournaments.isEmpty()) {
                                 Bukkit.getLogger().warning("Aucun tournoi activé dans la configuration !");
+                                pendingTournamentTask = null;
                                 return;
                             }
                             Tournament randomTournament = enabledTournaments.get(new Random().nextInt(enabledTournaments.size()));
@@ -136,8 +137,14 @@ public class TournamentManager {
             try {
                 int min = Integer.parseInt(parts[0].trim());
                 int max = Integer.parseInt(parts[1].trim());
+                // Bornes inversées (ex. "40-24") : nextInt planterait à chaque seconde du planificateur
+                if (max < min) {
+                    int tmp = min;
+                    min = max;
+                    max = tmp;
+                }
                 return new Random().nextInt(max - min + 1) + min;
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
                 return 10;
             }
         } else {

@@ -27,11 +27,12 @@ public class WinsManager {
         this.config = YamlConfiguration.loadConfiguration(file);
     }
 
-    public int getWins(UUID uuid) {
+    // PlaceholderAPI peut interroger hors du thread principal
+    public synchronized int getWins(UUID uuid) {
         return config.getInt(uuid.toString(), 0);
     }
 
-    public void addWin(UUID uuid) {
+    public synchronized void addWin(UUID uuid) {
         int wins = getWins(uuid) + 1;
         config.set(uuid.toString(), wins);
         save();

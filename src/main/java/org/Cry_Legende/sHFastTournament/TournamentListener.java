@@ -9,6 +9,7 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Item;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -26,7 +27,6 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.*;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,13 +59,7 @@ public class TournamentListener implements Listener {
         active.detachBossBar(event.getPlayer());
     }
 
-    private boolean isBlacklisted(String blacklist, String id) {
-        if ("NONE".equalsIgnoreCase(blacklist)) return false;
-        List<String> blackListItems = Arrays.asList(blacklist.split(","));
-        return blackListItems.contains(id.toUpperCase().trim());
-    }
-
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         if (event.isCancelled()) return; // Vérifie si l'event est annulé
         ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
@@ -74,15 +68,12 @@ public class TournamentListener implements Listener {
         if (!"BLOCK_BREAK".equalsIgnoreCase(tournament.getType())) return;
         if (tournament.getWorldsBlacklist().contains(event.getPlayer().getWorld().getName())) return;
         String blockType = event.getBlock().getType().name().toUpperCase();
-        if (!"NONE".equalsIgnoreCase(tournament.getObjective())) {
-            List<String> objectives = Arrays.asList(tournament.getObjective().split(","));
-            if (!objectives.contains(blockType)) return;
-        }
-        if (isBlacklisted(tournament.getBlacklist(), blockType)) return;
+        if (!tournament.acceptsObjective(blockType)) return;
+        if (tournament.isBlacklisted(blockType)) return;
         active.addScore(event.getPlayer(), 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCropsBreak(BlockBreakEvent event) {
         if (event.isCancelled()) return;
         ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
@@ -100,15 +91,12 @@ public class TournamentListener implements Listener {
         if (ageable.getAge() != ageable.getMaximumAge()) return;
 
         String blockType = block.getType().name().toUpperCase();
-        if (!"NONE".equalsIgnoreCase(tournament.getObjective())) {
-            List<String> objectives = Arrays.asList(tournament.getObjective().split(","));
-            if (!objectives.contains(blockType)) return;
-        }
-        if (isBlacklisted(tournament.getBlacklist(), blockType)) return;
+        if (!tournament.acceptsObjective(blockType)) return;
+        if (tournament.isBlacklisted(blockType)) return;
         active.addScore(event.getPlayer(), 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         if (event.isCancelled()) return; // Vérifie si l'event est annulé
         ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
@@ -117,11 +105,8 @@ public class TournamentListener implements Listener {
         if (!"BLOCK_PLACE".equalsIgnoreCase(tournament.getType())) return;
         if (tournament.getWorldsBlacklist().contains(event.getPlayer().getWorld().getName())) return;
         String blockType = event.getBlock().getType().name().toUpperCase();
-        if (!"NONE".equalsIgnoreCase(tournament.getObjective())) {
-            List<String> objectives = Arrays.asList(tournament.getObjective().split(","));
-            if (!objectives.contains(blockType)) return;
-        }
-        if (isBlacklisted(tournament.getBlacklist(), blockType)) return;
+        if (!tournament.acceptsObjective(blockType)) return;
+        if (tournament.isBlacklisted(blockType)) return;
         active.addScore(event.getPlayer(), 1);
     }
 
@@ -136,15 +121,12 @@ public class TournamentListener implements Listener {
         Player killer = event.getEntity().getKiller();
         if (tournament.getWorldsBlacklist().contains(killer.getWorld().getName())) return;
         String entityType = event.getEntity().getType().name().toUpperCase();
-        if (!"NONE".equalsIgnoreCase(tournament.getObjective())) {
-            List<String> objectives = Arrays.asList(tournament.getObjective().split(","));
-            if (!objectives.contains(entityType)) return;
-        }
-        if (isBlacklisted(tournament.getBlacklist(), entityType)) return;
+        if (!tournament.acceptsObjective(entityType)) return;
+        if (tournament.isBlacklisted(entityType)) return;
         active.addScore(killer, 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerFish(PlayerFishEvent event) {
         ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
         if (active == null) return;
@@ -167,19 +149,14 @@ public class TournamentListener implements Listener {
         } else {
             caughtType = event.getCaught().getType().name().toUpperCase();
         }
-        if (!"NONE".equalsIgnoreCase(tournament.getObjective())) {
-            List<String> objectives = Arrays.asList(tournament.getObjective().split(","));
-            if (!objectives.contains(caughtType)) {
-                return;
-            }
-        }
-        if (isBlacklisted(tournament.getBlacklist(), caughtType)) {
+        if (!tournament.acceptsObjective(caughtType)) return;
+        if (tournament.isBlacklisted(caughtType)) {
             return;
         }
         active.addScore(player, 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         // On vérifie si l'événement est annulé avant toute chose
         if (event.isCancelled()) return;
@@ -192,10 +169,7 @@ public class TournamentListener implements Listener {
         if (!(event.getDamager() instanceof Player)) return;
 
         String targetType = event.getEntity().getType().name().toUpperCase();
-        if (!"NONE".equalsIgnoreCase(tournament.getBlacklist())) {
-            List<String> blacklistItems = Arrays.asList(tournament.getBlacklist().split(","));
-            if (blacklistItems.contains(targetType)) return;
-        }
+        if (tournament.isBlacklisted(targetType)) return;
 
         Player player = (Player) event.getDamager();
         if (tournament.getWorldsBlacklist().contains(player.getWorld().getName())) return;
@@ -203,7 +177,7 @@ public class TournamentListener implements Listener {
         active.addScore(player, event.getDamage());
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
@@ -215,37 +189,33 @@ public class TournamentListener implements Listener {
         active.addScore(player, event.getFinalDamage());
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerMoveForJump(PlayerMoveEvent event) {
-        if (event.getFrom().getY() < event.getTo().getY()) {
-            double deltaY = event.getTo().getY() - event.getFrom().getY();
-            if (deltaY > 0.4) {
-                ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
-                if (active == null) return;
-                Tournament tournament = active.getTournament();
-                if (!"JUMP".equalsIgnoreCase(tournament.getType())) return;
-                if (tournament.getWorldsBlacklist().contains(event.getPlayer().getWorld().getName())) return;
-                active.addScore(event.getPlayer(), 1);
-            }
-        }
+        // Événement très fréquent : on sort d'abord s'il n'y a pas de tournoi de ce type
+        ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
+        if (active == null) return;
+        Tournament tournament = active.getTournament();
+        if (!"JUMP".equalsIgnoreCase(tournament.getType())) return;
+        if (event.getTo().getY() - event.getFrom().getY() <= 0.4) return;
+        if (tournament.getWorldsBlacklist().contains(event.getPlayer().getWorld().getName())) return;
+        active.addScore(event.getPlayer(), 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerMoveForWalk(PlayerMoveEvent event) {
-        if (event.isCancelled()) return;  // On ne compte pas si l'événement a été annulé
-        if (event.getFrom().getBlockX() != event.getTo().getBlockX() || event.getFrom().getBlockZ() != event.getTo().getBlockZ()) {
-            Player player = event.getPlayer();
-            if (player.isFlying()) return;  // Ne compte pas si le joueur vole
-            ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
-            if (active == null) return;
-            Tournament tournament = active.getTournament();
-            if (!"WALK".equalsIgnoreCase(tournament.getType())) return;
-            if (tournament.getWorldsBlacklist().contains(player.getWorld().getName())) return;
-            active.addScore(player, 1);
-        }
+        // Événement très fréquent : on sort d'abord s'il n'y a pas de tournoi de ce type
+        ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
+        if (active == null) return;
+        Tournament tournament = active.getTournament();
+        if (!"WALK".equalsIgnoreCase(tournament.getType())) return;
+        if (event.getFrom().getBlockX() == event.getTo().getBlockX() && event.getFrom().getBlockZ() == event.getTo().getBlockZ()) return;
+        Player player = event.getPlayer();
+        if (player.isFlying()) return;  // Ne compte pas si le joueur vole
+        if (tournament.getWorldsBlacklist().contains(player.getWorld().getName())) return;
+        active.addScore(player, 1);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onItemPickup(EntityPickupItemEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
@@ -268,18 +238,15 @@ public class TournamentListener implements Listener {
         if (tournament.getWorldsBlacklist().contains(player.getWorld().getName())) return;
 
         String itemType = event.getItemType().name().toUpperCase();
-        if (!"NONE".equalsIgnoreCase(tournament.getObjective())) {
-            List<String> objectives = Arrays.asList(tournament.getObjective().split(","));
-            if (!objectives.contains(itemType)) return;
-        }
+        if (!tournament.acceptsObjective(itemType)) return;
 
-        if (isBlacklisted(tournament.getBlacklist(), itemType)) return;
+        if (tournament.isBlacklisted(itemType)) return;
 
         // Ajoute le score en fonction du nombre d'items extraits
         active.addScore(player, event.getItemAmount());
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCraftItem(CraftItemEvent event) {
         if (event.isCancelled()) {
             return;
@@ -306,13 +273,8 @@ public class TournamentListener implements Listener {
         }
 
         String itemType = event.getCurrentItem().getType().name().toUpperCase();
-        if (!"NONE".equalsIgnoreCase(tournament.getObjective())) {
-            List<String> objectives = Arrays.asList(tournament.getObjective().split(","));
-            if (!objectives.contains(itemType)) {
-                return;
-            }
-        }
-        if (isBlacklisted(tournament.getBlacklist(), itemType)) {
+        if (!tournament.acceptsObjective(itemType)) return;
+        if (tournament.isBlacklisted(itemType)) {
             return;
         }
 

@@ -1,6 +1,8 @@
 package org.Cry_Legende.sHFastTournament;
 
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.ChatColor;
 import org.bukkit.boss.BossBar;
 import org.bukkit.boss.BarColor;
@@ -22,6 +24,9 @@ public class ActiveTournament extends BukkitRunnable {
     private final long startTime;
     private final long endTime;
     private int lastRemainingSeconds = -1;
+    // Classement calculé une fois par changement de scores (et non une fois par joueur et par seconde)
+    private Map<UUID, Integer> rankCache = new HashMap<>();
+    private boolean ranksDirty = false;
 
     public ActiveTournament(Tournament tournament) {
         this.tournament = tournament;
@@ -31,12 +36,12 @@ public class ActiveTournament extends BukkitRunnable {
 
         // Son et messages de début (inchangés)
         String soundStr = SHFastTournament.getInstance().getConfig().getString("settings.sounds.tournament-start", "ENTITY_EXPERIENCE_ORB_PICKUP");
-        try {
-            org.bukkit.Sound sound = org.bukkit.Sound.valueOf(soundStr.toUpperCase());
+        org.bukkit.Sound startSound = sound(soundStr);
+        if (startSound != null) {
             for (Player player : Bukkit.getOnlinePlayers()) {
-                player.playSound(player.getLocation(), sound, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), startSound, 1.0f, 1.0f);
             }
-        } catch (Exception e) {
+        } else {
             Bukkit.getLogger().warning("Son invalide pour tournament-start: " + soundStr);
         }
         List<String> startMessages = SHFastTournament.getInstance().getConfig().getStringList("messages.tournament-start");
@@ -45,6 +50,21 @@ public class ActiveTournament extends BukkitRunnable {
                 .replace("%duration%", tournament.getTime() + " min")
                 .replace("%description%", tournament.getDescription());
             Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', msg));
+        }
+    }
+
+    /** Son lu en config : ancien nom (ENTITY_PLAYER_LEVELUP) ou clé (minecraft:entity.player.levelup). */
+    private static org.bukkit.Sound sound(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String s = raw.trim();
+        if (s.indexOf(':') >= 0 || s.indexOf('.') >= 0) {
+            NamespacedKey key = NamespacedKey.fromString(s.toLowerCase(Locale.ROOT));
+            return key == null ? null : Registry.SOUND_EVENT.get(key);
+        }
+        try {
+            return (org.bukkit.Sound) org.bukkit.Sound.class.getField(s.toUpperCase(Locale.ROOT)).get(null);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            return null;
         }
     }
 
@@ -74,6 +94,7 @@ public class ActiveTournament extends BukkitRunnable {
 
     public void addScore(Player player, double amount) {
         scores.put(player.getUniqueId(), scores.getOrDefault(player.getUniqueId(), 0.0) + amount);
+        ranksDirty = true;
     }
 
     public double getScore(Player player) {
@@ -110,21 +131,23 @@ public class ActiveTournament extends BukkitRunnable {
             return -1;
         }
 
-        List<Entry<UUID, Double>> ranking = new ArrayList<>(scores.entrySet());
-        ranking.sort((a, b) -> {
-            int cmp = Double.compare(b.getValue(), a.getValue());
-            if (cmp == 0) {
-                return a.getKey().toString().compareTo(b.getKey().toString());
+        if (ranksDirty) {
+            List<Entry<UUID, Double>> ranking = new ArrayList<>(scores.entrySet());
+            ranking.sort((a, b) -> {
+                int cmp = Double.compare(b.getValue(), a.getValue());
+                if (cmp == 0) {
+                    return a.getKey().toString().compareTo(b.getKey().toString());
+                }
+                return cmp;
+            });
+            Map<UUID, Integer> ranks = new HashMap<>();
+            for (int i = 0; i < ranking.size(); i++) {
+                ranks.put(ranking.get(i).getKey(), i + 1);
             }
-            return cmp;
-        });
-
-        for (int i = 0; i < ranking.size(); i++) {
-            if (ranking.get(i).getKey().equals(playerId)) {
-                return i + 1;
-            }
+            rankCache = ranks;
+            ranksDirty = false;
         }
-        return -1;
+        return rankCache.getOrDefault(playerId, -1);
     }
 
     private String formatTime(int seconds) {
@@ -209,8 +232,19 @@ public class ActiveTournament extends BukkitRunnable {
     public void run() {
         int remainingSeconds = getRemainingSeconds();
         if (remainingSeconds <= 0) {
-            finishTournament();
+            // Arrêtée avant la conclusion : une erreur pendant les récompenses ne doit pas relancer le tirage chaque seconde
             cancel();
+            try {
+                finishTournament();
+            } catch (RuntimeException e) {
+                SHFastTournament.getInstance().getLogger().log(java.util.logging.Level.SEVERE, "Erreur à la fin du tournoi " + tournament.getId(), e);
+            } finally {
+                for (BossBar bossBar : playerBossBars.values()) {
+                    bossBar.removeAll();
+                }
+                playerBossBars.clear();
+                SHFastTournament.getInstance().getTournamentManager().setActiveTournament(null);
+            }
             return;
         }
         if (remainingSeconds != lastRemainingSeconds) {
@@ -261,12 +295,12 @@ public class ActiveTournament extends BukkitRunnable {
         playerBossBars.clear();
 
         String soundStr = SHFastTournament.getInstance().getConfig().getString("settings.sounds.tournament-end", "ENTITY_PLAYER_LEVELUP");
-        try {
-            org.bukkit.Sound sound = org.bukkit.Sound.valueOf(soundStr.toUpperCase());
+        org.bukkit.Sound endSound = sound(soundStr);
+        if (endSound != null) {
             for (Player player : Bukkit.getOnlinePlayers()) {
-                player.playSound(player.getLocation(), sound, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), endSound, 1.0f, 1.0f);
             }
-        } catch (Exception e) {
+        } else {
             Bukkit.getLogger().warning("Son invalide pour tournament-end: " + soundStr);
         }
         List<Entry<UUID, Double>> ranking = new ArrayList<>(scores.entrySet());
@@ -352,7 +386,12 @@ public class ActiveTournament extends BukkitRunnable {
                 for (String originalCmd : commands) {
                     String cmd = originalCmd.trim().replace("%player%", playerName);
                     if (!cmd.isEmpty()) {
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                        try {
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                        } catch (RuntimeException e) {
+                            // Une commande en échec ne doit pas priver les autres joueurs de leurs récompenses
+                            SHFastTournament.getInstance().getLogger().warning("Commande de récompense en échec '" + cmd + "' : " + e.getMessage());
+                        }
                     }
                 }
             }
