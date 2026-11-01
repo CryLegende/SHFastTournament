@@ -9,6 +9,8 @@ import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -27,6 +29,17 @@ public class ActiveTournament extends BukkitRunnable {
     // Classement calculé une fois par changement de scores (et non une fois par joueur et par seconde)
     private Map<UUID, Integer> rankCache = new HashMap<>();
     private boolean ranksDirty = false;
+    // Blocs posés pendant le tournoi : les casser ne rapporte rien (boucle pose/casse, minerai au Toucher de soie)
+    private final Set<BlockKey> placedBlocks = new HashSet<>();
+    // Positions déjà comptées en BLOCK_PLACE : reposer au même endroit ne rapporte plus
+    private final Set<BlockKey> scoredPlacements = new HashSet<>();
+
+    /** Position d'un bloc, indépendante de l'objet Block (qui ne doit pas être conservé). */
+    record BlockKey(UUID world, int x, int y, int z) {
+        static BlockKey of(Block block) {
+            return new BlockKey(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
+        }
+    }
 
     public ActiveTournament(Tournament tournament) {
         this.tournament = tournament;
@@ -99,6 +112,33 @@ public class ActiveTournament extends BukkitRunnable {
 
     public double getScore(Player player) {
         return scores.getOrDefault(player.getUniqueId(), 0.0);
+    }
+
+    /** Retient un bloc posé par un joueur pendant le tournoi. */
+    public void markPlaced(Block block) {
+        placedBlocks.add(BlockKey.of(block));
+    }
+
+    /** {@code true} si le bloc avait été posé pendant le tournoi ; il est oublié dans la foulée. */
+    public boolean consumePlaced(Block block) {
+        return placedBlocks.remove(BlockKey.of(block));
+    }
+
+    /** Suit les blocs posés que pousse ou tire un piston, pour qu'ils restent non comptés à leur nouvelle place. */
+    public void movePlaced(List<Block> moved, BlockFace direction) {
+        if (placedBlocks.isEmpty() || moved.isEmpty()) return;
+        List<Block> tracked = new ArrayList<>();
+        for (Block block : moved) {
+            if (placedBlocks.remove(BlockKey.of(block))) tracked.add(block);
+        }
+        for (Block block : tracked) {
+            placedBlocks.add(BlockKey.of(block.getRelative(direction)));
+        }
+    }
+
+    /** {@code true} la première fois qu'une position est comptée en BLOCK_PLACE pendant ce tournoi. */
+    public boolean firstPlacementAt(Block block) {
+        return scoredPlacements.add(BlockKey.of(block));
     }
 
     /**

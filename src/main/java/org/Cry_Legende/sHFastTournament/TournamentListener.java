@@ -12,6 +12,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -67,10 +69,35 @@ public class TournamentListener implements Listener {
         Tournament tournament = active.getTournament();
         if (!"BLOCK_BREAK".equalsIgnoreCase(tournament.getType())) return;
         if (tournament.getWorldsBlacklist().contains(event.getPlayer().getWorld().getName())) return;
+        // Bloc posé pendant le tournoi (bûche, pierre, minerai récupéré au Toucher de soie...) : ne compte pas
+        if (active.consumePlaced(event.getBlock())) return;
         String blockType = event.getBlock().getType().name().toUpperCase();
         if (!tournament.acceptsObjective(blockType)) return;
         if (tournament.isBlacklisted(blockType)) return;
         active.addScore(event.getPlayer(), 1);
+    }
+
+    /** Pendant un tournoi BLOCK_BREAK, retient chaque bloc posé : le recasser ne rapportera rien. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlaceDuringBreakTournament(BlockPlaceEvent event) {
+        ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
+        if (active == null) return;
+        if (!"BLOCK_BREAK".equalsIgnoreCase(active.getTournament().getType())) return;
+        active.markPlaced(event.getBlockPlaced());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPistonExtend(BlockPistonExtendEvent event) {
+        ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
+        if (active == null || !"BLOCK_BREAK".equalsIgnoreCase(active.getTournament().getType())) return;
+        active.movePlaced(event.getBlocks(), event.getDirection());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPistonRetract(BlockPistonRetractEvent event) {
+        ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
+        if (active == null || !"BLOCK_BREAK".equalsIgnoreCase(active.getTournament().getType())) return;
+        active.movePlaced(event.getBlocks(), event.getDirection());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -107,6 +134,8 @@ public class TournamentListener implements Listener {
         String blockType = event.getBlock().getType().name().toUpperCase();
         if (!tournament.acceptsObjective(blockType)) return;
         if (tournament.isBlacklisted(blockType)) return;
+        // Poser, casser et reposer au même endroit ne compte qu'une fois
+        if (!active.firstPlacementAt(event.getBlock())) return;
         active.addScore(event.getPlayer(), 1);
     }
 
@@ -224,6 +253,8 @@ public class TournamentListener implements Listener {
         if (!"ITEM_PICKUP".equalsIgnoreCase(tournament.getType())) return;
         Player player = (Player) event.getEntity();
         if (tournament.getWorldsBlacklist().contains(player.getWorld().getName())) return;
+        // Jeter un objet puis le ramasser ne compte pas
+        if (player.getUniqueId().equals(event.getItem().getThrower())) return;
         active.addScore(player, 1);
     }
 

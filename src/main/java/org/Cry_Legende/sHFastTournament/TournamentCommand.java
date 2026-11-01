@@ -97,7 +97,10 @@ public class TournamentCommand implements CommandExecutor {
                     return true;
                 }
                 activeCustom.addScore(target, 1);
-                sender.sendMessage(ChatColor.GREEN + "Un point a été ajouté pour " + target.getName() + ".");
+                // Appel par un autre plugin depuis la console (ex. une seconde de règne du roi du spawn) : pas de spam
+                if (sender instanceof org.bukkit.entity.Player) {
+                    sender.sendMessage(ChatColor.GREEN + "Un point a été ajouté pour " + target.getName() + ".");
+                }
                 break;
             case "status":
                 sendTournamentStatus(sender, config);
