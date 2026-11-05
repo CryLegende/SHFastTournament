@@ -1,0 +1,66 @@
+# ======================================================================== #
+#                 SHFastTournament - Fichier de Messages                   #
+# ======================================================================== #
+#
+# Codes couleur avec '&'. Les messages de commande suivent le format
+# &7&l« &<c>&lSH &8&l» &7texte (&a succès, &e info, &6 avertissement, &c erreur).
+#
+# ======================================================================== #
+
+tournament-start:
+- '&f█████████'
+- '&f█&8███&f█&8█&f█&8█&f█'
+- '&f█&8█&f███&8█&f█&8█&f█       &5♥♠ &5&lMini tournois &5♣♦'
+- '&f█&8███&f█&8███&f█'
+- '&f███&8█&f█&8█&f█&8█&f█       &7[ &a%event-name% &7] &8(%duration%)'
+- '&f█&8███&f█&8█&f█&8█&f█ &7%description%'
+- '&f█████████'
+tournament-end:
+- ''
+- '&7&l« &5&lMini tournoi &8&l» &7Fin du tournoi: &a%event-name%'
+- '&e&lClassement'
+- '%results%'
+- ''
+# Envoyé à un joueur qui se connecte pendant un tournoi. Liste vide = désactivé.
+# Variables : %event-id% %event-name% %event-type% %description% %points-name% %participants% %time-left% %time-elapsed% %time-total%
+tournament-join:
+- ''
+- '&7&l« &5&lMini tournoi &8&l» &7Un mini tournoi est en cours: &a%event-name%'
+- '&f  ➥ &7%description%'
+- '&f  ➥ &7Temps restant: &f%time-left% &8| &7Participants: &f%participants%'
+- ''
+results: '&f • &7(&e#%place%&7) &e%player% &7- %points% %points-name%'
+personal-results: 'Vous: &7(&e#%place%&7) - &e%points% %points-name%'
+no-participation: '&7&l« &6&lSH &8&l» &7Vous n''avez pas participé à ce mini tournoi'
+no-winner: '&7&l« &c&lSH &8&l» &fPersonne n''a participé à ce tournoi'
+# Message de l'action bar. Vide = désactivé. Variables : %points% %points-name% %time%
+actionbar: ''
+boss-bar: '&5&lMini tournoi: &e%event-name% &7- &e%points% &7%points-name% - (&f%time%&7)'
+unknown-command: '&7&l« &f&lSH &8&l» &fCommande inconnue, essayer autre chose.'
+no-perm: '&7&l« &f&lSH &8&l» &fCommande inconnue, essayer autre chose.'
+stop-success: '&7&l« &a&lSH &8&l» &7Le mini tournoi en cours a été arrêté.'
+start-forced: '&7&l« &e&lSH &8&l» &7Le tournoi en cours a été arrêté par la commande &eforce&7.'
+usage: '&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament <start|stop|info|status|custom>&7.'
+usage-start: '&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament start <id> [force]&7.'
+usage-custom: '&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament custom <id> <player>&7.'
+info-header: '&7&l« &e&lSH &8&l» &7Liste des tournois disponibles :'
+info-line: '&7- &e%event-id%&7 : %event-name%'
+custom-offline: '&7&l« &c&lSH &8&l» &7Le joueur &c%player%&7 n''est pas en ligne.'
+custom-point-added: '&7&l« &a&lSH &8&l» &7Un point a été ajouté pour &a%player%&7.'
+stop-fail: '&7&l« &c&lSH &8&l» &7Aucun tournoi n''est en cours.'
+start-success: '&7&l« &a&lSH &8&l» &7Le tournoi &a%event-name%&7 a commencé.'
+already-playing: '&7&l« &c&lSH &8&l» &7Un tournoi est déjà en cours. Utilisez &c/tournament start %event-id% force&7 pour forcer son démarrage.'
+not-an-id: '&7&l« &c&lSH &8&l» &7Le tournoi d''id &c%event-id%&7 n''existe pas.'
+status-no-active: '&7&l« &c&lSH &8&l» &cAucun mini tournoi en cours.'
+status-no-leader: Aucun
+tournament-status:
+- '&f█████████'
+- '&f█&8███&f█&8█&f█&8█&f█'
+- '&f█&8█&f███&8█&f█&8█&f█       &5♥♠ &5&lStatut tournoi &5♣♦'
+- '&f█&8███&f█&8███&f█'
+- '&f███&8█&f█&8█&f█&8█&f█       &7[ &a%event-name% &7] &8(ID: %event-id%)'
+- '&f█&8███&f█&8█&f█&8█&f█ &7Type: &f%event-type% &8| &7Participants: &f%participants%'
+- '&f█&8█&f███&8█&f█&8█&f█ &7Temps: &f%time-elapsed%&8/&f%time-total% &8(reste:
+  &f%time-left%&8)'
+- '&f███&8█&f█&8█&f█&8█&f█ &7Leader: &e%leader% &8- &e%leader-points% &7%points-name%'
+- '&f█████████'

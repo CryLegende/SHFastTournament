@@ -12,6 +12,7 @@ public class SHFastTournament extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
+        Messages.load(this);
 
         // --- initialisation winsManager
         winsManager = new WinsManager(this);

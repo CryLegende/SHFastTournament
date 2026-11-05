@@ -47,7 +47,7 @@ public class ActiveTournament extends BukkitRunnable {
         this.startTime = System.currentTimeMillis();
         this.endTime = startTime + durationMillis;
 
-        // Son et messages de début (inchangés)
+        // Son et messages de début
         String soundStr = SHFastTournament.getInstance().getConfig().getString("settings.sounds.tournament-start", "ENTITY_EXPERIENCE_ORB_PICKUP");
         org.bukkit.Sound startSound = sound(soundStr);
         if (startSound != null) {
@@ -57,7 +57,7 @@ public class ActiveTournament extends BukkitRunnable {
         } else {
             Bukkit.getLogger().warning("Son invalide pour tournament-start: " + soundStr);
         }
-        List<String> startMessages = SHFastTournament.getInstance().getConfig().getStringList("messages.tournament-start");
+        List<String> startMessages = Messages.getList("tournament-start");
         for (String line : startMessages) {
             String msg = line.replace("%event-name%", tournament.getDisplayName())
                 .replace("%duration%", tournament.getTime() + " min")
@@ -145,9 +145,7 @@ public class ActiveTournament extends BukkitRunnable {
      * Méthode pour générer le message de la BossBar pour un joueur donné.
      */
     private String getBossBarMessage(Player player) {
-        FileConfiguration config = SHFastTournament.getInstance().getConfig();
-        // Template de la bossbar, vous pouvez ajouter tous les placeholders nécessaires
-        String template = config.getString("messages.boss-bar", "&5&lMini tournoi: &e%event-name% &7- %points% %points-name% - (&f%time%&7)");
+        String template = Messages.get("boss-bar", "&5&lMini tournoi: &e%event-name% &7- %points% %points-name% - (&f%time%&7)");
         int remainingSeconds = getRemainingSeconds();
         int scoreDisplay = (int) Math.round(scores.getOrDefault(player.getUniqueId(), 0.0));
         int participants = getParticipantCount();
@@ -249,8 +247,7 @@ public class ActiveTournament extends BukkitRunnable {
      * Informe un joueur qui vient de se connecter qu'un mini tournoi est en cours.
      */
     public void sendJoinAnnouncement(Player player) {
-        FileConfiguration config = SHFastTournament.getInstance().getConfig();
-        List<String> lines = config.getStringList("messages.tournament-join");
+        List<String> lines = Messages.getList("tournament-join");
         if (lines.isEmpty()) {
             return;
         }
@@ -304,8 +301,8 @@ public class ActiveTournament extends BukkitRunnable {
             bossBar.setProgress(progress);
         }
 
-        // Envoi de l'actionbar (inchangé)
-        String actionBarTemplate = SHFastTournament.getInstance().getConfig().getString("messages.actionbar", "&5&lMini tournoi: &e%points% &7%points-name% (&e%time% sec restantes&7)");
+        // Envoi de l'actionbar
+        String actionBarTemplate = Messages.get("actionbar", "&5&lMini tournoi: &e%points% &7%points-name% (&e%time% sec restantes&7)");
 
         // Vérifier si le message d'ActionBar est vide
         if (actionBarTemplate == null || actionBarTemplate.trim().isEmpty()) {
@@ -353,9 +350,8 @@ public class ActiveTournament extends BukkitRunnable {
             }
             return cmp;
         });
-        FileConfiguration config = SHFastTournament.getInstance().getConfig();
         if (ranking.isEmpty()) {
-            String noWinner = config.getString("messages.no-winner", "Personne n'a participé à ce tournoi");
+            String noWinner = Messages.get("no-winner", "Personne n'a participé à ce tournoi");
             Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', noWinner));
             SHFastTournament.getInstance().getTournamentManager().setActiveTournament(null);
             return;
@@ -370,7 +366,7 @@ public class ActiveTournament extends BukkitRunnable {
                     .addWin(entry.getKey());
             }
             int scoreDisplay = (int) Math.round(entry.getValue());
-            String resultLine = config.getString("messages.results", "&7(&e#%place%&7) &e%player% &7- %points% %points-name%");
+            String resultLine = Messages.get("results", "&7(&e#%place%&7) &e%player% &7- %points% %points-name%");
             resultLine = resultLine.replace("%place%", String.valueOf(rank))
                 .replace("%player%", getPlayerName(entry.getKey()))
                 .replace("%points%", String.valueOf(scoreDisplay))
@@ -378,14 +374,14 @@ public class ActiveTournament extends BukkitRunnable {
             resultsBuilder.append(resultLine).append("\n");
         }
         String resultsStr = resultsBuilder.toString();
-        List<String> endMessages = config.getStringList("messages.tournament-end");
+        List<String> endMessages = Messages.getList("tournament-end");
         for (String line : endMessages) {
             String msg = line.replace("%event-name%", tournament.getDisplayName())
                 .replace("%results%", resultsStr);
             Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', msg));
         }
         processRewards(ranking);
-        String noParticipation = config.getString("messages.no-participation", "Vous n'avez pas participé à ce mini tournoi");
+        String noParticipation = Messages.get("no-participation", "Vous n'avez pas participé à ce mini tournoi");
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (!scores.containsKey(player.getUniqueId())) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', noParticipation));
@@ -423,15 +419,30 @@ public class ActiveTournament extends BukkitRunnable {
             }
 
             if (commands != null && !commands.isEmpty()) {
+                boolean dispatched = false;
+                boolean failed = false;
                 for (String originalCmd : commands) {
                     String cmd = originalCmd.trim().replace("%player%", playerName);
                     if (!cmd.isEmpty()) {
                         try {
-                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                            if (Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd)) {
+                                dispatched = true;
+                            } else {
+                                failed = true;
+                                SHFastTournament.getInstance().getLogger().warning("Commande de récompense refusée '" + cmd + "'");
+                            }
                         } catch (RuntimeException e) {
                             // Une commande en échec ne doit pas priver les autres joueurs de leurs récompenses
+                            failed = true;
                             SHFastTournament.getInstance().getLogger().warning("Commande de récompense en échec '" + cmd + "' : " + e.getMessage());
                         }
+                    }
+                }
+                if (dispatched && !failed) {
+                    try {
+                        logReward(config, playerName, rank);
+                    } catch (RuntimeException e) {
+                        SHFastTournament.getInstance().getLogger().warning("Log de récompense impossible pour " + playerName + " : " + e.getMessage());
                     }
                 }
             }
@@ -442,13 +453,28 @@ public class ActiveTournament extends BukkitRunnable {
                     continue;
                 }
                 int scoreDisplay = (int) Math.round(entry.getValue());
-                String personalTemplate = config.getString("messages.personal-results", "Vous: &7(&e#%place%&7) - &e%points% %points-name%");
+                String personalTemplate = Messages.get("personal-results", "Vous: &7(&e#%place%&7) - &e%points% %points-name%");
                 String personalMsg = personalTemplate.replace("%place%", String.valueOf(rank))
                     .replace("%points%", String.valueOf(scoreDisplay))
                     .replace("%points-name%", tournament.getPointsName());
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', personalMsg));
             }
         }
+    }
+
+    /** Écrit dans SHLogs la récompense d'un joueur, une fois toutes ses commandes exécutées. */
+    private void logReward(FileConfiguration config, String playerName, int rank) {
+        String tier = rank <= 3 ? "top" + rank : "participation";
+        String file = config.getString("settings.log.file", "recompenses");
+        String format = config.getString("settings.log.format",
+            "%player% -> reçoit la récompense du tournoi %tournament% (place %place% : %reward%)");
+        String reward = config.getString("settings.log.rewards." + tier, tier);
+        String tournamentName = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', tournament.getDisplayName()));
+        ActionLog.write(SHFastTournament.getInstance(), file, format
+            .replace("%player%", playerName)
+            .replace("%tournament%", tournamentName)
+            .replace("%place%", String.valueOf(rank))
+            .replace("%reward%", reward));
     }
 
     private String getPlayerName(UUID playerId) {

@@ -1,14 +1,41 @@
-# shfasttournament.admin pour l'accès à la commande
+# ======================================================================== #
+#                SHFastTournament - Configuration Principale               #
+# ======================================================================== #
+#
+# Plugin : mini-tournois automatiques (minage, pêche, combat...) lancés à
+# intervalle aléatoire, avec récompenses pour le top 3 et la participation.
+# Les messages sont dans 'messages.yml'.
+#
+# Commandes (/tournament) :
+#   /tournament start <id> [force]    Démarre un tournoi ('force' arrête celui en cours).
+#   /tournament stop                  Arrête le tournoi en cours.
+#   /tournament info                  Liste les tournois activés.
+#   /tournament status                Affiche le statut du tournoi en cours.
+#   /tournament custom <id> <joueur>  Ajoute un point à un joueur dans un tournoi CUSTOM.
+#
+# Permissions :
+#   shfasttournament.admin            Utiliser /tournament (par défaut : op).
+#
+# ======================================================================== #
+
 settings:
-  minimum-players: 10 # 20 # Minimum amount of players required to start a tournament
-  interval: 24-40 # in min (peut être une plage, par exemple "10-20", ou un seul nombre comme "3")
-  join-message-delay: 3 # en sec, delai avant d'annoncer le tournoi en cours a un joueur qui se connecte
-  
+  # Nombre minimum de joueurs en ligne pour lancer un tournoi automatique.
+  minimum-players: 10
+
+  # Délai en minutes avant le prochain tournoi automatique : un nombre ("3") ou une plage ("10-20").
+  interval: 24-40
+
+  # Délai en secondes avant d'annoncer le tournoi en cours à un joueur qui se connecte.
+  join-message-delay: 3
+
+  # Sons joués à tous les joueurs au début et à la fin d'un tournoi.
   sounds:
     tournament-start: ENTITY_EXPERIENCE_ORB_PICKUP
     tournament-end: ENTITY_PLAYER_LEVELUP
-  
-  rewards: # Chaque récompense est définie par top1, top2, top3 et participation
+
+  # Commandes console exécutées pour chaque place du classement. %player% est le nom du joueur.
+  # La participation récompense les joueurs au-delà du 3e dont les points atteignent la moitié de ceux du 3e.
+  rewards:
     top1:
     - sm %player% &7&l« &a&lSH &8&l» &7Vous avez fini &a1er &7 !
     - 'sm %player% &7(Récompenses: 10k SHCoins, 2 Luckyblocks Jaune, 2 Clés Ordinaire)'
@@ -35,57 +62,31 @@ settings:
     - 'sm %player% &7(Récompense de participation: 5k SHCoins)'
     - eco give %player% 5000
 
-messages:
-  tournament-start:
-  - '&f█████████'
-  - '&f█&8███&f█&8█&f█&8█&f█'
-  - '&f█&8█&f███&8█&f█&8█&f█       &5♥♠ &5&lMini tournois &5♣♦'
-  - '&f█&8███&f█&8███&f█'
-  - '&f███&8█&f█&8█&f█&8█&f█       &7[ &a%event-name% &7] &8(%duration%)'
-  - '&f█&8███&f█&8█&f█&8█&f█ &7%description%'
-  - '&f█████████'
-  tournament-end:
-  - ''
-  - '&7&l« &5&lMini tournoi &8&l» &7Fin du tournoi: &a%event-name%'
-  - '&e&lClassement'
-  - '%results%'
-  - ''
-  # Envoye a un joueur qui se connecte pendant un tournoi. Liste vide = desactive.
-  # Placeholders: %event-id% %event-name% %event-type% %description% %points-name% %participants% %time-left% %time-elapsed% %time-total%
-  tournament-join:
-  - ''
-  - '&7&l« &5&lMini tournoi &8&l» &7Un mini tournoi est en cours: &a%event-name%'
-  - '&f  ➥ &7%description%'
-  - '&f  ➥ &7Temps restant: &f%time-left% &8| &7Participants: &f%participants%'
-  - ''
-  results: '&f • &7(&e#%place%&7) &e%player% &7- %points% %points-name%'
-  personal-results: 'Vous: &7(&e#%place%&7) - &e%points% %points-name%'
-  no-participation: '&7&l« &6&lSH &8&l» &7Vous n''avez pas participé à ce mini tournoi'
-  no-winner: '&7&l« &c&lSH &8&l» &fPersonne n''a participé à ce tournoi'
-  actionbar: ''
-  # actionbar: '&5&lMini tournoi: &e%points% &7%points-name% (&e%time% sec restantes&7)'
-  boss-bar: '&5&lMini tournoi: &e%event-name% &7- &e%points% &7%points-name% - (&f%time%&7)'
-  unknown-command: '&7&l« &f&lSH &8&l» &fCommande inconnue, essayer autre chose.'
-  no-perm: '&7&l« &f&lSH &8&l» &fCommande inconnue, essayer autre chose.'
-  stop-success: '&7&l« &a&lSH &8&l» &7Le mini tournoi en cours a été arrêté.'
-  stop-fail: '&7&l« &c&lSH &8&l» &cThere is no playing tournament !'
-  start-success: '&7&l« &a&lSH &8&l» &aThe tournament %id% has just started.'
-  already-playing: '&7&l« &c&lSH &8&l» &cA tournament is already running !'
-  not-an-id: '&7&l« &c&lSH &8&l» &cThe id %id% is not a valid tournament id !'
-  status-no-active: '&7&l« &c&lSH &8&l» &cAucun mini tournoi en cours.'
-  status-no-leader: Aucun
-  tournament-status:
-  - '&f█████████'
-  - '&f█&8███&f█&8█&f█&8█&f█'
-  - '&f█&8█&f███&8█&f█&8█&f█       &5♥♠ &5&lStatut tournoi &5♣♦'
-  - '&f█&8███&f█&8███&f█'
-  - '&f███&8█&f█&8█&f█&8█&f█       &7[ &a%event-name% &7] &8(ID: %event-id%)'
-  - '&f█&8███&f█&8█&f█&8█&f█ &7Type: &f%event-type% &8| &7Participants: &f%participants%'
-  - '&f█&8█&f███&8█&f█&8█&f█ &7Temps: &f%time-elapsed%&8/&f%time-total% &8(reste:
-    &f%time-left%&8)'
-  - '&f███&8█&f█&8█&f█&8█&f█ &7Leader: &e%leader% &8- &e%leader-points% &7%points-name%'
-  - '&f█████████'
+  # Écriture des récompenses dans SHLogs : une ligne par joueur récompensé.
+  log:
+    # Nom du fichier de log.
+    file: recompenses
+    # Texte de la ligne. Variables : %player%, %tournament%, %place%, %reward%.
+    format: "%player% -> reçoit la récompense du tournoi %tournament% (place %place% : %reward%)"
+    # Texte de %reward% pour chaque place. À tenir à jour avec les commandes de 'rewards'.
+    rewards:
+      top1: 10000 SHCoins, 2 Luckyblocks Jaune, 2 Clés Ordinaire, 10 EXP de network
+      top2: 10000 SHCoins, 1 Luckyblock Jaune, 1 Clé Ordinaire, 5 EXP de network
+      top3: 1 Clé Ordinaire, 5 EXP de network
+      participation: 5000 SHCoins
 
+# Tournois. La clé de chaque entrée est l'id utilisé par /tournament start.
+#   enabled           Le tournoi peut être tiré au sort par le lancement automatique.
+#   time              Durée en minutes.
+#   display-name      Nom affiché (codes couleur avec &).
+#   description       Description affichée aux joueurs.
+#   type              BLOCK_BREAK, BLOCK_PLACE, KILL_ENTITY, TAKE_DAMAGE, MAKE_DAMAGE, FISHING, JUMP,
+#                     WALK, ITEM_PICKUP, SMELT, CROPS_BREAK, CRAFT ou CUSTOM (points ajoutés par /tournament custom).
+#   objective         "NONE" ou identifiants séparés par des virgules (blocs, entités ou items selon le type).
+#   blacklist         "NONE" ou identifiants exclus, séparés par des virgules.
+#   points-name       Unité des points dans les messages.
+#   boss-bar          BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW ou NONE.
+#   worlds-blacklist  Mondes où rien ne compte (liste, à omettre si aucun).
 tournaments:
   pro-peche:
     enabled: false
@@ -101,14 +102,14 @@ tournaments:
     - arene
   tueur-de-Zombies:
     enabled: true
-    time: 10 # min
+    time: 10
     display-name: Tueur de Zombies
     description: Tuez un maximum de Zombies
-    type: KILL_ENTITY # BLOCK_BREAK, BLOCK_PLACE, KILL_ENTITY, TAKE_DAMAGE, MAKE_DAMAGE, FISHING, JUMP, WALK, ITEM_PICKUP, SMELT, CROPS_BREAK, CRAFT
-    objective: ZOMBIE # "NONE" ou IDs séparés par des virgules
-    blacklist: NONE # "NONE" ou IDs séparés par des virgules
+    type: KILL_ENTITY
+    objective: ZOMBIE
+    blacklist: NONE
     points-name: Zombie(s) tué(s)
-    boss-bar: GREEN # BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW ou NONE
+    boss-bar: GREEN
     worlds-blacklist:
     - spawn
     - arene
@@ -290,8 +291,17 @@ tournaments:
     blacklist: NONE
     points-name: box(s) ouverte(s)
     boss-bar: YELLOW
-    worlds-blacklist: []
-  
+  Roi-du-spawn:
+    enabled: true
+    time: 5
+    display-name: Roi du spawn
+    description: Restez le plus longtemps possible roi du spawn (plaque au /spawn) !
+    type: CUSTOM
+    objective: ROI
+    blacklist: NONE
+    points-name: seconde(s) de règne
+    boss-bar: YELLOW
+
   Craft-citrouilles:
     enabled: true
     time: 10
@@ -305,11 +315,10 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
-  # Opale
+
   Chasseur-de-Squelettes:
     enabled: true
-    time: 10 # min
+    time: 10
     display-name: Chasseur de Squelettes
     description: Éliminez le plus de squelettes pour gagner !
     type: KILL_ENTITY
@@ -320,24 +329,24 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   Mineur-de-Fer:
     enabled: true
-    time: 10 # min
+    time: 10
     display-name: Mineur de Fer
     description: Extrayez un maximum de minerai de fer !
     type: BLOCK_BREAK
     objective: IRON_ORE,DEEPSLATE_IRON_ORE
     blacklist: NONE
     points-name: minerai(s) de fer extrait(s)
-    boss-bar: YELLOW # Un peu ocre comme le fer
+    boss-bar: YELLOW
     worlds-blacklist:
     - spawn
     - arene
-  
+
   Farmeur-Carottes:
     enabled: true
-    time: 10 # min
+    time: 10
     display-name: Farmeur de Carottes
     description: Récoltez le plus de carottes possible !
     type: CROPS_BREAK
@@ -348,10 +357,10 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   Cultivateur-Verrues:
     enabled: true
-    time: 10 # min
+    time: 10
     display-name: Cultivateur de Verrues
     description: Récoltez un maximum de verrues du Nether.
     type: CROPS_BREAK
@@ -362,10 +371,10 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   Chef-Cuistot-Viandes:
     enabled: false
-    time: 10 # min
+    time: 10
     display-name: Barbecue
     description: Faites cuire le plus de viandes !
     type: SMELT
@@ -374,39 +383,38 @@ tournaments:
     objective: BEEF,PORKCHOP,CHICKEN,MUTTON,RABBIT
     blacklist: NONE
     points-name: viande(s) cuite(s)
-    boss-bar: RED # Couleur feu / cuisson
+    boss-bar: RED
     worlds-blacklist:
     - spawn
     - arene
-  
+
   Chasseur-Tresors-Aquatiques:
     enabled: true
-    time: 15 # Peut-être un peu plus long car les trésors sont rares
+    time: 15
     display-name: Trésors Aquatiques
     description: Pêchez le plus de trésors rares !
     type: FISHING
-    # Basé sur la catégorie "Trésor" de la pêche Minecraft
     objective: BOW,ENCHANTED_BOOK,FISHING_ROD,NAME_TAG,NAUTILUS_SHELL,SADDLE
-    blacklist: NONE # On ne veut pas blacklister de trésors
+    blacklist: NONE
     points-name: trésor(s) pêché(s)
-    boss-bar: GOLD # Pour les trésors ! Ou YELLOW
+    boss-bar: GOLD
     worlds-blacklist:
     - arene
-  
+
   Grand-Terraformeur:
     enabled: true
-    time: 10 # min
+    time: 10
     display-name: Grand Terraformeur
     description: Placez le plus de terre, herbe ou sable !
     type: BLOCK_PLACE
-    objective: DIRT,GRASS_BLOCK,SAND # Tu peux ajouter COBBLESTONE, STONE etc. si tu veux élargir
+    objective: DIRT,GRASS_BLOCK,SAND
     blacklist: NONE
     points-name: bloc(s) de terraformation placé(s)
-    boss-bar: GREEN # Pour l'aspect nature/construction
+    boss-bar: GREEN
     worlds-blacklist:
     - spawn
     - arene
-  
+
   Exterminateur-de-Creepers:
     enabled: true
     time: 10
@@ -420,7 +428,7 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   Cultivateur-de-Vignes:
     enabled: true
     time: 10
@@ -434,7 +442,7 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   noel-bataille-neige:
     enabled: false
     time: 10
@@ -448,7 +456,7 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   noel-pose-lanternes:
     enabled: false
     time: 15
@@ -462,7 +470,7 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   noel-abattage-sapins:
     enabled: false
     time: 10
@@ -476,13 +484,13 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   noel-recolte-cacao:
     enabled: false
     time: 10
     display-name: '&6Noël 🍫 Récolte de cacao'
     description: Récoltez un maximum de fèves de cacao
-    type: BLOCK_BREAK
+    type: CROPS_BREAK
     objective: COCOA
     blacklist: NONE
     points-name: cacao(s)
@@ -490,7 +498,7 @@ tournaments:
     worlds-blacklist:
     - spawn
     - arene
-  
+
   easter-Lapin:
     enabled: false
     time: 10
@@ -501,5 +509,3 @@ tournaments:
     blacklist: NONE
     points-name: lapin(s) attrapé(s)
     boss-bar: PINK
-    worlds-blacklist: []
-

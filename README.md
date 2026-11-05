@@ -18,6 +18,14 @@ Mini-tournois automatiques (minage, pêche, combat…) à intervalle aléatoire,
 
 Utilisé sur : **Opale**.
 
+## Dépendances
+
+- Optionnelles : `PlaceholderAPI`, `SHLogs`
+
+## Logs
+
+Chaque récompense donnée en fin de tournoi est écrite dans SHLogs, dans le fichier `recompenses` : une ligne par joueur, avec le tournoi, la place et la récompense. Le fichier, le texte de la ligne et le texte de chaque récompense se règlent dans `settings.log`. Sans SHLogs, la ligne est écrite dans la console.
+
 ## Commandes
 
 | Commande | Alias | Description | Permission |
@@ -36,7 +44,8 @@ Fichiers par défaut repris du serveur (secrets remplacés par `CHANGE_ME`). Cli
 
 <pre>
 plugins/SHFastTournament/
-└── <a href="src/main/resources/config.yml">config.yml</a>
+├── <a href="src/main/resources/config.yml">config.yml</a>
+└── <a href="src/main/resources/messages.yml">messages.yml</a>
 </pre>
 
 ## Compilation
