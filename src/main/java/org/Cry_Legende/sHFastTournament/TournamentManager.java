@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class TournamentManager {
 
     private final Map<String, Tournament> tournaments = new HashMap<>();
-    private ActiveTournament activeTournament = null;
+    private volatile ActiveTournament activeTournament = null;
     private BukkitRunnable autoSchedulerTask;
     private BukkitRunnable pendingTournamentTask;
 

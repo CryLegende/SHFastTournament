@@ -16,23 +16,25 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ActiveTournament extends BukkitRunnable {
 
     private final Tournament tournament;
-    private final Map<UUID, Double> scores = new HashMap<>();
+    // Alimenté depuis le thread de chaque monde (mort d'un mob, dégâts, ramassage), d'où la collection concurrente
+    private final Map<UUID, Double> scores = new ConcurrentHashMap<>();
     // BossBar personnalisée pour chaque joueur
     private final Map<UUID, BossBar> playerBossBars = new HashMap<>();
     private final long startTime;
     private final long endTime;
     private int lastRemainingSeconds = -1;
     // Classement calculé une fois par changement de scores (et non une fois par joueur et par seconde)
-    private Map<UUID, Integer> rankCache = new HashMap<>();
-    private boolean ranksDirty = false;
+    private volatile Map<UUID, Integer> rankCache = new HashMap<>();
+    private volatile boolean ranksDirty = false;
     // Blocs posés pendant le tournoi : les casser ne rapporte rien (boucle pose/casse, minerai au Toucher de soie)
-    private final Set<BlockKey> placedBlocks = new HashSet<>();
+    private final Set<BlockKey> placedBlocks = ConcurrentHashMap.newKeySet();
     // Positions déjà comptées en BLOCK_PLACE : reposer au même endroit ne rapporte plus
-    private final Set<BlockKey> scoredPlacements = new HashSet<>();
+    private final Set<BlockKey> scoredPlacements = ConcurrentHashMap.newKeySet();
 
     /** Position d'un bloc, indépendante de l'objet Block (qui ne doit pas être conservé). */
     record BlockKey(UUID world, int x, int y, int z) {
@@ -106,7 +108,7 @@ public class ActiveTournament extends BukkitRunnable {
     }
 
     public void addScore(Player player, double amount) {
-        scores.put(player.getUniqueId(), scores.getOrDefault(player.getUniqueId(), 0.0) + amount);
+        scores.merge(player.getUniqueId(), amount, Double::sum);
         ranksDirty = true;
     }
 
@@ -170,6 +172,8 @@ public class ActiveTournament extends BukkitRunnable {
         }
 
         if (ranksDirty) {
+            // Remis à faux avant le calcul : un point marqué pendant le tri relance un calcul au prochain appel
+            ranksDirty = false;
             List<Entry<UUID, Double>> ranking = new ArrayList<>(scores.entrySet());
             ranking.sort((a, b) -> {
                 int cmp = Double.compare(b.getValue(), a.getValue());
@@ -183,7 +187,6 @@ public class ActiveTournament extends BukkitRunnable {
                 ranks.put(ranking.get(i).getKey(), i + 1);
             }
             rankCache = ranks;
-            ranksDirty = false;
         }
         return rankCache.getOrDefault(playerId, -1);
     }
