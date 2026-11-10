@@ -64,3 +64,12 @@ tournament-status:
   &f%time-left%&8)'
 - '&f███&8█&f█&8█&f█&8█&f█ &7Leader: &e%leader% &8- &e%leader-points% &7%points-name%'
 - '&f█████████'
+
+# Avec SHNetwork : la base du réseau ne répond pas à /tournament start ou stop.
+network-error: '&7&l« &c&lSH &8&l» &7La base du réseau ne répond pas : &cdemande annulée&7, voir la console.'
+# /tournament import : terminée. %imported% = joueurs ajoutés à la base, %present% = joueurs qui y avaient déjà un total.
+import-success: '&7&l« &a&lSH &8&l» &a%imported%&7 joueurs importés dans la base du réseau (&a%present%&7 déjà présents).'
+# /tournament import sans SHNetwork.
+import-unavailable: '&7&l« &6&lSH &8&l» &7L''importation ne sert qu''&6avec SHNetwork&7 : ce serveur compte les victoires dans wins.yml.'
+# /tournament import : base injoignable.
+import-error: '&7&l« &c&lSH &8&l» &7Importation &céchouée&7 : base injoignable, voir la console.'

@@ -22,7 +22,11 @@ public class TournamentTabCompleter implements TabCompleter {
         // Premier argument : sous-commandes
         if (args.length == 1) {
             String partial = args[0].toLowerCase();
-            List<String> subCommands = Arrays.asList("start", "stop", "info", "status", "custom");
+            List<String> subCommands = new ArrayList<>(Arrays.asList("start", "stop", "info", "status", "custom"));
+            // L'importation des victoires ne sert qu'avec SHNetwork
+            if (SHFastTournament.getInstance().network() != null) {
+                subCommands.add("import");
+            }
             StringUtil.copyPartialMatches(partial, subCommands, completions);
         }
         // Deuxième argument pour "start" : IDs des tournois disponibles

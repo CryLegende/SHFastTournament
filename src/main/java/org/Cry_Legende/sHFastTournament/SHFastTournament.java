@@ -1,12 +1,21 @@
 package org.Cry_Legende.sHFastTournament;
 
+import org.Cry_Legende.sHFastTournament.network.NetBus;
+import org.Cry_Legende.sHFastTournament.network.ShNetworkBus;
+import org.Cry_Legende.sHFastTournament.network.TournamentDatabase;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.UUID;
+import java.util.logging.Level;
 
 public class SHFastTournament extends JavaPlugin {
 
     private static SHFastTournament instance;
     private TournamentManager tournamentManager;
     private WinsManager winsManager;
+    // Non nul seulement avec SHNetwork : un seul tournoi pour tout le réseau, points et victoires en base
+    private volatile NetworkTournaments network;
 
     @Override
     public void onEnable() {
@@ -23,7 +32,12 @@ public class SHFastTournament extends JavaPlugin {
         }
 
         tournamentManager = new TournamentManager();
-        tournamentManager.init();
+        tournamentManager.loadTournaments();
+        enableNetwork();
+        // Avec SHNetwork, seul le meneur lance des tournois automatiques
+        if (network == null) {
+            tournamentManager.startAutoScheduler();
+        }
 
         if (getCommand("tournament") != null) {
             getCommand("tournament").setExecutor(new TournamentCommand());
@@ -42,11 +56,62 @@ public class SHFastTournament extends JavaPlugin {
         if (tournamentManager != null) {
             tournamentManager.shutdown();
         }
+        if (network != null) {
+            network.disable();
+        }
         getLogger().info("SHFastTournament désactivé.");
+    }
+
+    /**
+     * Passe en mode réseau si SHNetwork est installé et 'reseau.actif' est vrai. Les classes qui touchent à SHNetwork
+     * ne sont résolues qu'ici : sans lui, rien n'est chargé et le plugin garde son fonctionnement d'origine.
+     */
+    private void enableNetwork() {
+        FileConfiguration config = getConfig();
+        if (!config.getBoolean("reseau.actif", true)) return;
+        if (!getServer().getPluginManager().isPluginEnabled("SHNetwork")) return;
+        String url = config.getString("reseau.base-de-donnees.url");
+        if (url == null || url.isBlank()) {
+            getLogger().warning("SHNetwork présent mais 'reseau.base-de-donnees' manque dans config.yml : tournois locaux à ce serveur.");
+            return;
+        }
+        TournamentDatabase db = null;
+        NetworkTournaments games = null;
+        try {
+            NetBus bus = ShNetworkBus.open();
+            db = TournamentDatabase.connect(
+                url,
+                config.getString("reseau.base-de-donnees.utilisateur"),
+                config.getString("reseau.base-de-donnees.mot-de-passe"),
+                Math.max(250, config.getInt("reseau.base-de-donnees.delai-ms", 3000)));
+            games = new NetworkTournaments(this, tournamentManager, bus, db, config.getString("reseau.canal", "fasttournament"));
+            games.enable();
+            network = games;
+            getLogger().info("SHNetwork détecté : un seul tournoi pour tout le réseau, points et victoires en base.");
+        } catch (RuntimeException | LinkageError e) {
+            network = null;
+            if (games != null) {
+                games.disable();
+            } else if (db != null) {
+                db.close();
+            }
+            getLogger().log(Level.SEVERE, "SHNetwork présent mais inutilisable, tournois locaux à ce serveur : " + e);
+        }
     }
 
     public WinsManager getWinsManager() {
         return winsManager;
+    }
+
+    /** Victoires d'un joueur : celles du réseau (base) avec SHNetwork, wins.yml sinon. */
+    public int getWins(UUID uuid) {
+        NetworkTournaments net = network;
+        return net != null ? net.wins(uuid) : winsManager.getWins(uuid);
+    }
+
+    /** Le tournoi partagé du réseau, ou null sur un serveur seul. */
+    NetworkTournaments network() {
+        return network;
     }
 
     public static SHFastTournament getInstance() {

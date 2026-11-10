@@ -16,11 +16,6 @@ public class TournamentManager {
     private BukkitRunnable autoSchedulerTask;
     private BukkitRunnable pendingTournamentTask;
 
-    public void init() {
-        loadTournaments();
-        startAutoScheduler();
-    }
-
     public void shutdown() {
         if (autoSchedulerTask != null) {
             autoSchedulerTask.cancel();
@@ -33,7 +28,7 @@ public class TournamentManager {
         }
     }
 
-    private void loadTournaments() {
+    void loadTournaments() {
         FileConfiguration config = SHFastTournament.getInstance().getConfig();
         ConfigurationSection tournamentsSection = config.getConfigurationSection("tournaments");
         if (tournamentsSection == null) {
@@ -84,7 +79,7 @@ public class TournamentManager {
     /**
      * Lance une tâche récurrente pour démarrer automatiquement un tournoi si les conditions sont remplies.
      */
-    private void startAutoScheduler() {
+    void startAutoScheduler() {
         autoSchedulerTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -130,7 +125,7 @@ public class TournamentManager {
     /**
      * Analyse l'objet interval (chaîne ou nombre) et renvoie un délai en minutes.
      */
-    private int parseInterval(Object intervalObj) {
+    int parseInterval(Object intervalObj) {
         String intervalStr = String.valueOf(intervalObj);
         if (intervalStr.contains("-")) {
             String[] parts = intervalStr.split("-");

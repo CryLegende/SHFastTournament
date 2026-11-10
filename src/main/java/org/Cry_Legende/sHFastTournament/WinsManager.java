@@ -5,6 +5,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class WinsManager {
@@ -36,6 +38,19 @@ public class WinsManager {
         int wins = getWins(uuid) + 1;
         config.set(uuid.toString(), wins);
         save();
+    }
+
+    /** Copie de toutes les victoires enregistrées (uuid -> total), pour l'importation en base du réseau. */
+    public synchronized Map<UUID, Integer> snapshot() {
+        Map<UUID, Integer> out = new LinkedHashMap<>();
+        for (String key : config.getKeys(false)) {
+            try {
+                out.put(UUID.fromString(key), config.getInt(key, 0));
+            } catch (IllegalArgumentException ignored) {
+                // clé qui n'est pas un uuid : ignorée
+            }
+        }
+        return out;
     }
 
     private void save() {

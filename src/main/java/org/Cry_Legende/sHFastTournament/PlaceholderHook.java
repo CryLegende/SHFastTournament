@@ -40,7 +40,7 @@ public class PlaceholderHook extends PlaceholderExpansion {
     public String onPlaceholderRequest(Player player, String identifier) {
         if (player == null) return "";
         if ("wins".equals(identifier)) {
-            return String.valueOf(plugin.getWinsManager().getWins(player.getUniqueId()));
+            return String.valueOf(plugin.getWins(player.getUniqueId()));
         }
         return null;
     }

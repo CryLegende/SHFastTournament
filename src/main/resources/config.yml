@@ -4,6 +4,8 @@
 #
 # Plugin : mini-tournois automatiques (minage, pêche, combat...) lancés à
 # intervalle aléatoire, avec récompenses pour le top 3 et la participation.
+# Avec SHNetwork, un seul tournoi tourne pour tous les serveurs Opale (voir la
+# section 'reseau' plus bas).
 # Les messages sont dans 'messages.yml'.
 #
 # Commandes (/tournament) :
@@ -12,9 +14,13 @@
 #   /tournament info                  Liste les tournois activés.
 #   /tournament status                Affiche le statut du tournoi en cours.
 #   /tournament custom <id> <joueur>  Ajoute un point à un joueur dans un tournoi CUSTOM.
+#   /tournament import                Avec SHNetwork : copie les victoires de wins.yml dans la base du réseau,
+#                                     sans toucher aux joueurs qui y ont déjà un total.
 #
 # Permissions :
 #   shfasttournament.admin            Utiliser /tournament (par défaut : op).
+#
+# Placeholder : %shfasttournament_wins% = nombre de victoires du joueur (celles de tout le réseau avec SHNetwork).
 #
 # ======================================================================== #
 
@@ -74,6 +80,43 @@ settings:
       top2: 10000 SHCoins, 1 Luckyblock Jaune, 1 Clé Ordinaire, 5 EXP de network
       top3: 1 Clé Ordinaire, 5 EXP de network
       participation: 5000 SHCoins
+
+# Tournoi unique pour tout le réseau Opale. Demande SHNetwork : sans lui, ou avec actif: false, chaque serveur
+# lance ses propres tournois (minimum-players et interval comptent alors ses seuls joueurs) et garde les
+# victoires dans wins.yml.
+# Tous les serveurs affichent le même tournoi à la même heure et comptent les actions de leurs joueurs. Les points
+# sont additionnés dans la base partagée : un joueur qui change de serveur garde son score. Un seul serveur, le
+# meneur, lance les tournois automatiques (minimum-players compte les joueurs de tout le réseau) et conclut :
+# classement, victoire, récompenses envoyées une seule fois par runFor, là où se trouve le joueur ou à sa prochaine
+# connexion. /tournament start, stop, custom et status marchent depuis n'importe quel serveur.
+# Les sections 'settings' (récompenses comprises) et 'tournaments' doivent être les mêmes sur tous les serveurs.
+reseau:
+  actif: true
+  # Canal du bus SHNetwork où les serveurs s'annoncent le début, l'arrêt et la fin d'un tournoi
+  canal: fasttournament
+  # Intervalle, en millisecondes, entre deux envois des points à la base et deux relevés des points de tous les serveurs.
+  # C'est le retard maximal du classement affiché dans la boss bar, et les points qu'un arrêt brutal du serveur peut perdre.
+  synchro-ms: 1000
+  # Intervalle, en secondes, entre deux recherches d'un tournoi en cours quand ce serveur n'en suit aucun
+  # (message perdu, serveur qui vient de démarrer)
+  veille-secondes: 5
+  # Attente, en secondes, entre l'heure de fin et la conclusion par le meneur : chaque serveur envoie ses derniers points
+  delai-conclusion-secondes: 3
+  # Un tournoi resté sans conclusion plus longtemps que cela après son heure de fin (aucun meneur pendant ce temps)
+  # est abandonné, sans récompense
+  abandon-apres-minutes: 60
+  # Les points et le classement d'un tournoi terminé sont supprimés de la base après ce nombre de jours ; les victoires restent
+  conservation-jours: 14
+  # Durée, en secondes, pendant laquelle le nombre de victoires d'un joueur lu en base est gardé en mémoire
+  cache-victoires-secondes: 30
+  # Base partagée par tous les serveurs : tables fasttournament_runs, fasttournament_scores,
+  # fasttournament_results et fasttournament_wins (voir sql/schema.sql)
+  base-de-donnees:
+    url: "jdbc:mariadb://127.0.0.1:3306/bo_net"
+    utilisateur: shfasttournament
+    mot-de-passe: CHANGE_ME
+    # Délai maximal de connexion et de réponse de la base, en millisecondes
+    delai-ms: 3000
 
 # Tournois. La clé de chaque entrée est l'id utilisé par /tournament start.
 #   enabled           Le tournoi peut être tiré au sort par le lancement automatique.

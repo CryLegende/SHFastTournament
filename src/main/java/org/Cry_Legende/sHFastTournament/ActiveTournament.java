@@ -1,5 +1,6 @@
 package org.Cry_Legende.sHFastTournament;
 
+import org.Cry_Legende.sHFastTournament.network.TournamentDatabase.Result;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -20,9 +21,18 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ActiveTournament extends BukkitRunnable {
 
+    /** Tournoi partagé entre serveurs (SHNetwork) : c'est le meneur qui conclut, pas ce serveur. */
+    interface NetworkRun {
+
+        /** Appelé chaque seconde une fois l'heure de fin passée, tant que l'annonce du meneur n'est pas arrivée. */
+        void timeUp(ActiveTournament tournament);
+    }
+
     private final Tournament tournament;
-    // Alimenté depuis le thread de chaque monde (mort d'un mob, dégâts, ramassage), d'où la collection concurrente
-    private final Map<UUID, Double> scores = new ConcurrentHashMap<>();
+    // Alimenté depuis le thread de chaque monde (mort d'un mob, dégâts, ramassage), d'où une collection concurrente
+    private final ScoreBook scores;
+    // Nul pour un tournoi local à ce serveur
+    private final NetworkRun network;
     // BossBar personnalisée pour chaque joueur
     private final Map<UUID, BossBar> playerBossBars = new HashMap<>();
     private final long startTime;
@@ -31,6 +41,7 @@ public class ActiveTournament extends BukkitRunnable {
     // Classement calculé une fois par changement de scores (et non une fois par joueur et par seconde)
     private volatile Map<UUID, Integer> rankCache = new HashMap<>();
     private volatile boolean ranksDirty = false;
+    private volatile boolean closed = false;
     // Blocs posés pendant le tournoi : les casser ne rapporte rien (boucle pose/casse, minerai au Toucher de soie)
     private final Set<BlockKey> placedBlocks = ConcurrentHashMap.newKeySet();
     // Positions déjà comptées en BLOCK_PLACE : reposer au même endroit ne rapporte plus
@@ -43,13 +54,29 @@ public class ActiveTournament extends BukkitRunnable {
         }
     }
 
+    /** Tournoi local : démarre maintenant, points gardés sur ce serveur. */
     public ActiveTournament(Tournament tournament) {
-        this.tournament = tournament;
-        long durationMillis = tournament.getTime() * 60L * 1000L;
-        this.startTime = System.currentTimeMillis();
-        this.endTime = startTime + durationMillis;
+        this(tournament, new LocalScoreBook(), null, System.currentTimeMillis(), tournament.getTime() * 60L * 1000L, true);
+    }
 
-        // Son et messages de début
+    /**
+     * @param network  non nul pour un tournoi partagé
+     * @param announce vrai pour annoncer le début (son et messages) ; faux quand ce serveur rejoint un tournoi déjà commencé
+     */
+    ActiveTournament(Tournament tournament, ScoreBook scores, NetworkRun network, long startTime, long durationMillis, boolean announce) {
+        this.tournament = tournament;
+        this.scores = scores;
+        this.network = network;
+        this.startTime = startTime;
+        this.endTime = startTime + durationMillis;
+        scores.onChange(() -> ranksDirty = true);
+        if (announce) {
+            announceStart();
+        }
+    }
+
+    /** Son et messages de début. */
+    private void announceStart() {
         String soundStr = SHFastTournament.getInstance().getConfig().getString("settings.sounds.tournament-start", "ENTITY_EXPERIENCE_ORB_PICKUP");
         org.bukkit.Sound startSound = sound(soundStr);
         if (startSound != null) {
@@ -104,16 +131,28 @@ public class ActiveTournament extends BukkitRunnable {
     }
 
     public Map<UUID, Double> getScoresSnapshot() {
-        return new HashMap<>(scores);
+        return scores.snapshot();
+    }
+
+    /** Pseudo d'un participant d'un autre serveur, ou null (tournoi local, ou pseudo inconnu). */
+    String knownName(UUID uuid) {
+        return scores.nameOf(uuid);
     }
 
     public void addScore(Player player, double amount) {
-        scores.merge(player.getUniqueId(), amount, Double::sum);
+        addScore(player.getUniqueId(), player.getName(), amount);
+    }
+
+    /** Ajoute des points à un joueur, connecté sur ce serveur ou sur un autre. */
+    void addScore(UUID uuid, String name, double amount) {
+        // Tournoi partagé : un point marqué après l'heure de fin n'est compté nulle part, tous les serveurs s'arrêtent à la même heure
+        if (network != null && System.currentTimeMillis() >= endTime) return;
+        scores.add(uuid, name, amount);
         ranksDirty = true;
     }
 
     public double getScore(Player player) {
-        return scores.getOrDefault(player.getUniqueId(), 0.0);
+        return scores.get(player.getUniqueId());
     }
 
     /** Retient un bloc posé par un joueur pendant le tournoi. */
@@ -149,7 +188,7 @@ public class ActiveTournament extends BukkitRunnable {
     private String getBossBarMessage(Player player) {
         String template = Messages.get("boss-bar", "&5&lMini tournoi: &e%event-name% &7- %points% %points-name% - (&f%time%&7)");
         int remainingSeconds = getRemainingSeconds();
-        int scoreDisplay = (int) Math.round(scores.getOrDefault(player.getUniqueId(), 0.0));
+        int scoreDisplay = (int) Math.round(scores.get(player.getUniqueId()));
         int participants = getParticipantCount();
         String rank = "-";
         int computedRank = getPlayerRank(player.getUniqueId());
@@ -167,14 +206,14 @@ public class ActiveTournament extends BukkitRunnable {
     }
 
     private int getPlayerRank(UUID playerId) {
-        if (!scores.containsKey(playerId)) {
+        if (!scores.has(playerId)) {
             return -1;
         }
 
         if (ranksDirty) {
             // Remis à faux avant le calcul : un point marqué pendant le tri relance un calcul au prochain appel
             ranksDirty = false;
-            List<Entry<UUID, Double>> ranking = new ArrayList<>(scores.entrySet());
+            List<Entry<UUID, Double>> ranking = new ArrayList<>(scores.snapshot().entrySet());
             ranking.sort((a, b) -> {
                 int cmp = Double.compare(b.getValue(), a.getValue());
                 if (cmp == 0) {
@@ -271,7 +310,11 @@ public class ActiveTournament extends BukkitRunnable {
     @Override
     public void run() {
         int remainingSeconds = getRemainingSeconds();
-        if (remainingSeconds <= 0) {
+        if (remainingSeconds <= 0 && network != null) {
+            // Tournoi partagé : le meneur conclut et annonce la fin à tous les serveurs, celui-ci attend son annonce
+            network.timeUp(this);
+            if (closed) return;
+        } else if (remainingSeconds <= 0) {
             // Arrêtée avant la conclusion : une erreur pendant les récompenses ne doit pas relancer le tirage chaque seconde
             cancel();
             try {
@@ -313,7 +356,7 @@ public class ActiveTournament extends BukkitRunnable {
         }
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (scores.containsKey(player.getUniqueId())) {
+            if (scores.has(player.getUniqueId())) {
                 int scoreDisplay = (int) Math.round(scores.get(player.getUniqueId()));
                 String message = actionBarTemplate
                     .replace("%points%", String.valueOf(scoreDisplay))
@@ -334,16 +377,8 @@ public class ActiveTournament extends BukkitRunnable {
         }
         playerBossBars.clear();
 
-        String soundStr = SHFastTournament.getInstance().getConfig().getString("settings.sounds.tournament-end", "ENTITY_PLAYER_LEVELUP");
-        org.bukkit.Sound endSound = sound(soundStr);
-        if (endSound != null) {
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                player.playSound(player.getLocation(), endSound, 1.0f, 1.0f);
-            }
-        } else {
-            Bukkit.getLogger().warning("Son invalide pour tournament-end: " + soundStr);
-        }
-        List<Entry<UUID, Double>> ranking = new ArrayList<>(scores.entrySet());
+        playEndSound();
+        List<Entry<UUID, Double>> ranking = new ArrayList<>(scores.snapshot().entrySet());
         ranking.sort((a, b) -> {
             int cmp = Double.compare(b.getValue(), a.getValue());
             if (cmp == 0) {
@@ -386,11 +421,83 @@ public class ActiveTournament extends BukkitRunnable {
         processRewards(ranking);
         String noParticipation = Messages.get("no-participation", "Vous n'avez pas participé à ce mini tournoi");
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!scores.containsKey(player.getUniqueId())) {
+            if (!scores.has(player.getUniqueId())) {
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&', noParticipation));
             }
         }
         SHFastTournament.getInstance().getTournamentManager().setActiveTournament(null);
+    }
+
+    private static void playEndSound() {
+        String soundStr = SHFastTournament.getInstance().getConfig().getString("settings.sounds.tournament-end", "ENTITY_PLAYER_LEVELUP");
+        org.bukkit.Sound endSound = sound(soundStr);
+        if (endSound != null) {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.playSound(player.getLocation(), endSound, 1.0f, 1.0f);
+            }
+        } else {
+            Bukkit.getLogger().warning("Son invalide pour tournament-end: " + soundStr);
+        }
+    }
+
+    /**
+     * Tournoi partagé : annonce la fin telle que le meneur l'a publiée (classement complet, du premier au dernier).
+     * Mêmes textes et même ordre que la fin d'un tournoi local ; les récompenses sont données par le meneur.
+     */
+    void showEnd(List<Result> ranking) {
+        // Supprimer toutes les bossbars individuelles
+        for (BossBar bossBar : playerBossBars.values()) {
+            bossBar.removeAll();
+        }
+        playerBossBars.clear();
+
+        playEndSound();
+        if (ranking.isEmpty()) {
+            String noWinner = Messages.get("no-winner", "Personne n'a participé à ce tournoi");
+            Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', noWinner));
+            return;
+        }
+        StringBuilder resultsBuilder = new StringBuilder();
+        for (int i = 0; i < Math.min(3, ranking.size()); i++) {
+            Result entry = ranking.get(i);
+            int scoreDisplay = (int) Math.round(entry.score());
+            String resultLine = Messages.get("results", "&7(&e#%place%&7) &e%player% &7- %points% %points-name%");
+            resultLine = resultLine.replace("%place%", String.valueOf(entry.place()))
+                .replace("%player%", entry.name())
+                .replace("%points%", String.valueOf(scoreDisplay))
+                .replace("%points-name%", tournament.getPointsName());
+            resultsBuilder.append(resultLine).append("\n");
+        }
+        String resultsStr = resultsBuilder.toString();
+        for (String line : Messages.getList("tournament-end")) {
+            String msg = line.replace("%event-name%", tournament.getDisplayName())
+                .replace("%results%", resultsStr);
+            Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', msg));
+        }
+        // Message personnel pour les joueurs hors top3 qui reçoivent une récompense
+        Set<UUID> participants = new HashSet<>();
+        for (Result entry : ranking) {
+            participants.add(entry.uuid());
+            if (entry.place() <= 3 || !"participation".equals(entry.tier())) {
+                continue;
+            }
+            Player player = Bukkit.getPlayer(entry.uuid());
+            if (player == null) {
+                continue;
+            }
+            int scoreDisplay = (int) Math.round(entry.score());
+            String personalTemplate = Messages.get("personal-results", "Vous: &7(&e#%place%&7) - &e%points% %points-name%");
+            String personalMsg = personalTemplate.replace("%place%", String.valueOf(entry.place()))
+                .replace("%points%", String.valueOf(scoreDisplay))
+                .replace("%points-name%", tournament.getPointsName());
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', personalMsg));
+        }
+        String noParticipation = Messages.get("no-participation", "Vous n'avez pas participé à ce mini tournoi");
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!participants.contains(player.getUniqueId())) {
+                player.sendMessage(ChatColor.translateAlternateColorCodes('&', noParticipation));
+            }
+        }
     }
 
     private void processRewards(List<Entry<UUID, Double>> ranking) {
@@ -467,6 +574,11 @@ public class ActiveTournament extends BukkitRunnable {
 
     /** Écrit dans SHLogs la récompense d'un joueur, une fois toutes ses commandes exécutées. */
     private void logReward(FileConfiguration config, String playerName, int rank) {
+        logReward(tournament, config, playerName, rank);
+    }
+
+    /** Écrit dans SHLogs la récompense d'un joueur de ce tournoi (aussi utilisé par le meneur d'un tournoi partagé). */
+    static void logReward(Tournament tournament, FileConfiguration config, String playerName, int rank) {
         String tier = rank <= 3 ? "top" + rank : "participation";
         String file = config.getString("settings.log.file", "recompenses");
         String format = config.getString("settings.log.format",
@@ -491,6 +603,7 @@ public class ActiveTournament extends BukkitRunnable {
     }
 
     public void stopTournament() {
+        closed = true;
         cancel();
         for (BossBar bossBar : playerBossBars.values()) {
             bossBar.removeAll();

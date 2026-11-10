@@ -25,6 +25,9 @@ public class TournamentCommand implements CommandExecutor {
             return true;
         }
 
+        // Non nul avec SHNetwork : un seul tournoi pour tout le réseau, quel que soit le serveur où la commande est tapée
+        NetworkTournaments network = SHFastTournament.getInstance().network();
+
         switch (args[0].toLowerCase()) {
             case "start":
                 if (args.length < 2) {
@@ -35,6 +38,11 @@ public class TournamentCommand implements CommandExecutor {
                 Tournament tournament = SHFastTournament.getInstance().getTournamentManager().getTournament(id);
                 if (tournament == null) {
                     sender.sendMessage(message("not-an-id", "&7&l« &c&lSH &8&l» &7Le tournoi d'id &c%event-id%&7 n'existe pas.", "%event-id%", id));
+                    return true;
+                }
+                if (network != null) {
+                    boolean force = args.length >= 3 && args[2].equalsIgnoreCase("force");
+                    network.start(tournament, force, outcome -> sender.sendMessage(startMessage(outcome, tournament)));
                     return true;
                 }
                 // Si un tournoi est déjà actif
@@ -53,6 +61,10 @@ public class TournamentCommand implements CommandExecutor {
                 sender.sendMessage(message("start-success", "&7&l« &a&lSH &8&l» &7Le tournoi &a%event-name%&7 a commencé.", "%event-name%", tournament.getDisplayName()));
                 break;
             case "stop":
+                if (network != null) {
+                    network.stop(outcome -> sender.sendMessage(stopMessage(outcome)));
+                    return true;
+                }
                 ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
                 if (active == null) {
                     sender.sendMessage(message("stop-fail", "&7&l« &c&lSH &8&l» &7Aucun tournoi n'est en cours."));
@@ -89,6 +101,19 @@ public class TournamentCommand implements CommandExecutor {
                 if (!customId.equalsIgnoreCase(currentTournament.getObjective())) {
                     return true;
                 }
+                if (network != null) {
+                    // Le joueur peut être sur un autre serveur : ses points sont comptés ici et rejoignent le total du réseau
+                    NetworkTournaments.Target found = network.findTarget(playerName);
+                    if (found == null) {
+                        sender.sendMessage(message("custom-offline", "&7&l« &c&lSH &8&l» &7Le joueur &c%player%&7 n'est pas en ligne.", "%player%", playerName));
+                        return true;
+                    }
+                    activeCustom.addScore(found.uuid(), found.name(), 1);
+                    if (sender instanceof org.bukkit.entity.Player) {
+                        sender.sendMessage(message("custom-point-added", "&7&l« &a&lSH &8&l» &7Un point a été ajouté pour &a%player%&7.", "%player%", found.name()));
+                    }
+                    break;
+                }
                 var target = org.bukkit.Bukkit.getPlayerExact(playerName);
                 if (target == null) {
                     sender.sendMessage(message("custom-offline", "&7&l« &c&lSH &8&l» &7Le joueur &c%player%&7 n'est pas en ligne.", "%player%", playerName));
@@ -102,6 +127,21 @@ public class TournamentCommand implements CommandExecutor {
                 break;
             case "status":
                 sendTournamentStatus(sender);
+                break;
+            case "import":
+                // Reprend les victoires de wins.yml dans la base du réseau
+                if (network == null) {
+                    sender.sendMessage(message("import-unavailable", "&7&l« &6&lSH &8&l» &7L'importation ne sert qu'&6avec SHNetwork&7 : ce serveur compte les victoires dans wins.yml."));
+                    return true;
+                }
+                network.importWins(SHFastTournament.getInstance().getWinsManager().snapshot(), counts -> {
+                    if (counts == null) {
+                        sender.sendMessage(message("import-error", "&7&l« &c&lSH &8&l» &7Importation &céchouée&7 : base injoignable, voir la console."));
+                    } else {
+                        sender.sendMessage(message("import-success", "&7&l« &a&lSH &8&l» &a%imported%&7 joueurs importés dans la base du réseau (&a%present%&7 déjà présents).",
+                            "%imported%", String.valueOf(counts[0]), "%present%", String.valueOf(counts[1])));
+                    }
+                });
                 break;
             default:
                 sender.sendMessage(colorize(Messages.get("unknown-command", "&cCommande inconnue.")));
@@ -130,8 +170,12 @@ public class TournamentCommand implements CommandExecutor {
                 .orElse(null);
             if (topEntry != null) {
                 Player online = org.bukkit.Bukkit.getPlayer(topEntry.getKey());
+                // Participant d'un autre serveur : son pseudo vient de la base du réseau
+                String known = active.knownName(topEntry.getKey());
                 if (online != null) {
                     leaderName = online.getName();
+                } else if (known != null) {
+                    leaderName = known;
                 } else {
                     var offline = org.bukkit.Bukkit.getOfflinePlayer(topEntry.getKey());
                     if (offline.getName() != null && !offline.getName().isEmpty()) {
@@ -158,6 +202,29 @@ public class TournamentCommand implements CommandExecutor {
                 .replace("%leader-points%", leaderPoints);
             sender.sendMessage(colorize(msg));
         }
+    }
+
+    /** Réponse de /tournament start avec SHNetwork : mêmes textes qu'un serveur seul. */
+    private String startMessage(NetworkTournaments.Outcome outcome, Tournament tournament) {
+        return switch (outcome) {
+            case FORCED -> message("start-forced", "&7&l« &e&lSH &8&l» &7Le tournoi en cours a été arrêté par la commande &eforce&7.");
+            case STARTED -> message("start-success", "&7&l« &a&lSH &8&l» &7Le tournoi &a%event-name%&7 a commencé.", "%event-name%", tournament.getDisplayName());
+            case ALREADY_RUNNING -> message("already-playing", "&7&l« &c&lSH &8&l» &7Un tournoi est déjà en cours. Utilisez &c/tournament start %event-id% force&7 pour forcer son démarrage.", "%event-id%", tournament.getId());
+            default -> networkError();
+        };
+    }
+
+    /** Réponse de /tournament stop avec SHNetwork : mêmes textes qu'un serveur seul. */
+    private String stopMessage(NetworkTournaments.Outcome outcome) {
+        return switch (outcome) {
+            case STOPPED -> message("stop-success", "&7&l« &a&lSH &8&l» &7Le mini tournoi en cours a été arrêté.");
+            case NONE -> message("stop-fail", "&7&l« &c&lSH &8&l» &7Aucun tournoi n'est en cours.");
+            default -> networkError();
+        };
+    }
+
+    private String networkError() {
+        return message("network-error", "&7&l« &c&lSH &8&l» &7La base du réseau ne répond pas : &cdemande annulée&7, voir la console.");
     }
 
     private String formatTime(int seconds) {
