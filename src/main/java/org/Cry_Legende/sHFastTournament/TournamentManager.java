@@ -7,11 +7,13 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class TournamentManager {
 
-    private final Map<String, Tournament> tournaments = new HashMap<>();
+    // Remplacé en place par /shfasttournament reload (NetworkTournaments garde une référence à ce gestionnaire)
+    private final Map<String, Tournament> tournaments = new ConcurrentHashMap<>();
     private volatile ActiveTournament activeTournament = null;
     private BukkitRunnable autoSchedulerTask;
     private BukkitRunnable pendingTournamentTask;
@@ -33,15 +35,19 @@ public class TournamentManager {
         ConfigurationSection tournamentsSection = config.getConfigurationSection("tournaments");
         if (tournamentsSection == null) {
             SHFastTournament.getInstance().getLogger().warning("Aucune configuration de tournois trouvée !");
+            tournaments.clear();
             return;
         }
+        Map<String, Tournament> loaded = new HashMap<>();
         for (String key : tournamentsSection.getKeys(false)) {
             ConfigurationSection section = tournamentsSection.getConfigurationSection(key);
             if (section != null) {
-                Tournament tournament = new Tournament(key, section);
-                tournaments.put(key, tournament);
+                loaded.put(key, new Tournament(key, section));
             }
         }
+        // En place : un tournoi en cours garde son objet Tournament et finit avec ses anciennes définitions
+        tournaments.keySet().retainAll(loaded.keySet());
+        tournaments.putAll(loaded);
     }
 
     public Tournament getTournament(String id) {

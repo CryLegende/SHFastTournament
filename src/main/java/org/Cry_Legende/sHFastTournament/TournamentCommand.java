@@ -6,32 +6,63 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+/** /shfasttournament (alias /tournament) : start, stop, info, status, custom, import (avec SHNetwork) et reload. */
 public class TournamentCommand implements CommandExecutor {
+
+    /** Sous-commandes dans l'ordre d'affichage ; chacune demande {@code shfasttournament.admin.<nom>}. */
+    static final List<String> SUBS = List.of("start", "stop", "info", "status", "custom", "import", "reload");
+    static final String PERMISSION_PREFIX = "shfasttournament.admin.";
+
+    /** Sous-commandes que l'expéditeur peut utiliser ; l'importation n'est proposée qu'avec SHNetwork. */
+    static List<String> allowed(CommandSender sender) {
+        boolean network = SHFastTournament.getInstance().network() != null;
+        List<String> names = new ArrayList<>();
+        for (String sub : SUBS) {
+            if (sender.hasPermission(PERMISSION_PREFIX + sub) && (network || !sub.equals("import"))) {
+                names.add(sub);
+            }
+        }
+        return names;
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Vérification de permission
-        if (!sender.hasPermission("shfasttournament.admin")) {
+        List<String> allowed = allowed(sender);
+        // Sans réseau, l'importation reste répondue (import-unavailable) à qui a le droit de la demander
+        boolean importAsked = args.length > 0 && args[0].equalsIgnoreCase("import") && sender.hasPermission(PERMISSION_PREFIX + "import");
+        if (allowed.isEmpty() && !importAsked) {
             sender.sendMessage(colorize(Messages.get("no-perm", "&cVous n'avez pas la permission d'utiliser cette commande.")));
             return true;
         }
 
-        if (args.length == 0) {
-            sender.sendMessage(message("usage", "&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament <start|stop|info|status|custom>&7."));
+        String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+        if (!allowed.contains(sub) && !importAsked) {
+            sender.sendMessage(message("usage", "&7&l« &c&lSH &8&l» &7Utilisation : &c/shfasttournament <%subs%>&7.", "%subs%", String.join("|", allowed)));
             return true;
         }
 
         // Non nul avec SHNetwork : un seul tournoi pour tout le réseau, quel que soit le serveur où la commande est tapée
         NetworkTournaments network = SHFastTournament.getInstance().network();
 
-        switch (args[0].toLowerCase()) {
+        switch (sub) {
+            case "reload":
+                String error = SHFastTournament.getInstance().reload();
+                if (error == null) {
+                    sender.sendMessage(message("reloaded", "&7&l« &a&lSH &8&l» &7Configuration et messages &arechargés&7."));
+                } else {
+                    sender.sendMessage(message("reload-failed", "&7&l« &c&lSH &8&l» &7Rechargement annulé, l'ancienne configuration reste active : &c%error%&7.", "%error%", error));
+                }
+                break;
             case "start":
                 if (args.length < 2) {
-                    sender.sendMessage(message("usage-start", "&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament start <id> [force]&7."));
+                    sender.sendMessage(message("usage-start", "&7&l« &c&lSH &8&l» &7Utilisation : &c/shfasttournament start <id> [force]&7."));
                     return true;
                 }
                 String id = args[1];
@@ -52,7 +83,7 @@ public class TournamentCommand implements CommandExecutor {
                         SHFastTournament.getInstance().getTournamentManager().setActiveTournament(null);
                         sender.sendMessage(message("start-forced", "&7&l« &e&lSH &8&l» &7Le tournoi en cours a été arrêté par la commande &eforce&7."));
                     } else {
-                        sender.sendMessage(message("already-playing", "&7&l« &c&lSH &8&l» &7Un tournoi est déjà en cours. Utilisez &c/tournament start %event-id% force&7 pour forcer son démarrage.", "%event-id%", id));
+                        sender.sendMessage(message("already-playing", "&7&l« &c&lSH &8&l» &7Un tournoi est déjà en cours. Utilisez &c/shfasttournament start %event-id% force&7 pour forcer son démarrage.", "%event-id%", id));
                         return true;
                     }
                 }
@@ -81,9 +112,9 @@ public class TournamentCommand implements CommandExecutor {
                     .forEach(t -> sender.sendMessage(message("info-line", "&7- &e%event-id%&7 : %event-name%", "%event-id%", t.getId(), "%event-name%", t.getDisplayName())));
                 break;
             case "custom":
-                // Utilisation : /tournament custom <id> <player>
+                // Utilisation : /shfasttournament custom <id> <player>
                 if (args.length < 3) {
-                    sender.sendMessage(message("usage-custom", "&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament custom <id> <player>&7."));
+                    sender.sendMessage(message("usage-custom", "&7&l« &c&lSH &8&l» &7Utilisation : &c/shfasttournament custom <id> <player>&7."));
                     return true;
                 }
                 String customId = args[1];
@@ -144,7 +175,7 @@ public class TournamentCommand implements CommandExecutor {
                 });
                 break;
             default:
-                sender.sendMessage(colorize(Messages.get("unknown-command", "&cCommande inconnue.")));
+                sender.sendMessage(message("usage", "&7&l« &c&lSH &8&l» &7Utilisation : &c/shfasttournament <%subs%>&7.", "%subs%", String.join("|", allowed)));
         }
         return true;
     }
@@ -204,17 +235,17 @@ public class TournamentCommand implements CommandExecutor {
         }
     }
 
-    /** Réponse de /tournament start avec SHNetwork : mêmes textes qu'un serveur seul. */
+    /** Réponse de /shfasttournament start avec SHNetwork : mêmes textes qu'un serveur seul. */
     private String startMessage(NetworkTournaments.Outcome outcome, Tournament tournament) {
         return switch (outcome) {
             case FORCED -> message("start-forced", "&7&l« &e&lSH &8&l» &7Le tournoi en cours a été arrêté par la commande &eforce&7.");
             case STARTED -> message("start-success", "&7&l« &a&lSH &8&l» &7Le tournoi &a%event-name%&7 a commencé.", "%event-name%", tournament.getDisplayName());
-            case ALREADY_RUNNING -> message("already-playing", "&7&l« &c&lSH &8&l» &7Un tournoi est déjà en cours. Utilisez &c/tournament start %event-id% force&7 pour forcer son démarrage.", "%event-id%", tournament.getId());
+            case ALREADY_RUNNING -> message("already-playing", "&7&l« &c&lSH &8&l» &7Un tournoi est déjà en cours. Utilisez &c/shfasttournament start %event-id% force&7 pour forcer son démarrage.", "%event-id%", tournament.getId());
             default -> networkError();
         };
     }
 
-    /** Réponse de /tournament stop avec SHNetwork : mêmes textes qu'un serveur seul. */
+    /** Réponse de /shfasttournament stop avec SHNetwork : mêmes textes qu'un serveur seul. */
     private String stopMessage(NetworkTournaments.Outcome outcome) {
         return switch (outcome) {
             case STOPPED -> message("stop-success", "&7&l« &a&lSH &8&l» &7Le mini tournoi en cours a été arrêté.");

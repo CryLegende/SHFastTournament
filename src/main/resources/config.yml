@@ -8,17 +8,23 @@
 # section 'reseau' plus bas).
 # Les messages sont dans 'messages.yml'.
 #
-# Commandes (/tournament) :
-#   /tournament start <id> [force]    Démarre un tournoi ('force' arrête celui en cours).
-#   /tournament stop                  Arrête le tournoi en cours.
-#   /tournament info                  Liste les tournois activés.
-#   /tournament status                Affiche le statut du tournoi en cours.
-#   /tournament custom <id> <joueur>  Ajoute un point à un joueur dans un tournoi CUSTOM.
-#   /tournament import                Avec SHNetwork : copie les victoires de wins.yml dans la base du réseau,
-#                                     sans toucher aux joueurs qui y ont déjà un total.
+# Commandes (/shfasttournament, alias /tournament) :
+#   /shfasttournament start <id> [force]    Démarre un tournoi ('force' arrête celui en cours).
+#   /shfasttournament stop                  Arrête le tournoi en cours.
+#   /shfasttournament info                  Liste les tournois activés.
+#   /shfasttournament status                Affiche le statut du tournoi en cours.
+#   /shfasttournament custom <id> <joueur>  Ajoute un point à un joueur dans un tournoi CUSTOM.
+#   /shfasttournament import                Avec SHNetwork : copie les victoires de wins.yml dans la base du réseau,
+#                                           sans toucher aux joueurs qui y ont déjà un total.
+#   /shfasttournament reload                Relit config.yml et messages.yml : réglages, récompenses, définitions des tournois.
+#                                           Un tournoi en cours finit avec ses anciennes définitions. Si un fichier est invalide,
+#                                           l'ancienne configuration reste active. wins.yml et la base ne sont pas touchés ;
+#                                           la section 'reseau' n'est lue qu'au démarrage.
+#   Sans argument, la commande affiche les sous-commandes que l'expéditeur a le droit d'utiliser. Elle marche depuis la console.
 #
 # Permissions :
-#   shfasttournament.admin            Utiliser /tournament (par défaut : op).
+#   shfasttournament.admin           Toutes les commandes ci-dessus (par défaut : op).
+#   shfasttournament.admin.<start|stop|info|status|custom|import|reload>   Une commande chacune (par défaut : op).
 #
 # Placeholder : %shfasttournament_wins% = nombre de victoires du joueur (celles de tout le réseau avec SHNetwork).
 #
@@ -88,7 +94,7 @@ settings:
 # sont additionnés dans la base partagée : un joueur qui change de serveur garde son score. Un seul serveur, le
 # meneur, lance les tournois automatiques (minimum-players compte les joueurs de tout le réseau) et conclut :
 # classement, victoire, récompenses envoyées une seule fois par runFor, là où se trouve le joueur ou à sa prochaine
-# connexion. /tournament start, stop, custom et status marchent depuis n'importe quel serveur.
+# connexion. /shfasttournament start, stop, custom et status marchent depuis n'importe quel serveur.
 # Les sections 'settings' (récompenses comprises) et 'tournaments' doivent être les mêmes sur tous les serveurs.
 reseau:
   actif: true
@@ -118,13 +124,13 @@ reseau:
     # Délai maximal de connexion et de réponse de la base, en millisecondes
     delai-ms: 3000
 
-# Tournois. La clé de chaque entrée est l'id utilisé par /tournament start.
+# Tournois. La clé de chaque entrée est l'id utilisé par /shfasttournament start.
 #   enabled           Le tournoi peut être tiré au sort par le lancement automatique.
 #   time              Durée en minutes.
 #   display-name      Nom affiché (codes couleur avec &).
 #   description       Description affichée aux joueurs.
 #   type              BLOCK_BREAK, BLOCK_PLACE, KILL_ENTITY, TAKE_DAMAGE, MAKE_DAMAGE, FISHING, JUMP,
-#                     WALK, ITEM_PICKUP, SMELT, CROPS_BREAK, CRAFT ou CUSTOM (points ajoutés par /tournament custom).
+#                     WALK, ITEM_PICKUP, SMELT, CROPS_BREAK, CRAFT ou CUSTOM (points ajoutés par /shfasttournament custom).
 #   objective         "NONE" ou identifiants séparés par des virgules (blocs, entités ou items selon le type).
 #   blacklist         "NONE" ou identifiants exclus, séparés par des virgules.
 #   points-name       Unité des points dans les messages.

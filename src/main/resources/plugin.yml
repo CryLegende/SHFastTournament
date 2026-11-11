@@ -14,11 +14,41 @@ libraries:
   - org.mariadb.jdbc:mariadb-java-client:3.4.1
 
 commands:
-  tournament:
-    description: Commande principale pour gérer les mini tournois
-    usage: /tournament <start|stop|info|status|custom>
+  shfasttournament:
+    description: Administration des mini tournois (start, stop, info, status, custom, import, reload).
+    usage: /shfasttournament <start|stop|info|status|custom|reload>
+    aliases: [tournament]
 
 permissions:
   shfasttournament.admin:
-    description: Permet de gérer les mini tournois via /tournament
+    description: Toutes les commandes d'administration des mini tournois.
+    default: op
+    children:
+      shfasttournament.admin.start: true
+      shfasttournament.admin.stop: true
+      shfasttournament.admin.info: true
+      shfasttournament.admin.status: true
+      shfasttournament.admin.custom: true
+      shfasttournament.admin.import: true
+      shfasttournament.admin.reload: true
+  shfasttournament.admin.start:
+    description: /shfasttournament start <id> [force]
+    default: op
+  shfasttournament.admin.stop:
+    description: /shfasttournament stop
+    default: op
+  shfasttournament.admin.info:
+    description: /shfasttournament info
+    default: op
+  shfasttournament.admin.status:
+    description: /shfasttournament status
+    default: op
+  shfasttournament.admin.custom:
+    description: /shfasttournament custom <id> <joueur>
+    default: op
+  shfasttournament.admin.import:
+    description: /shfasttournament import (avec SHNetwork)
+    default: op
+  shfasttournament.admin.reload:
+    description: /shfasttournament reload
     default: op

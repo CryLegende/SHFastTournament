@@ -3,9 +3,13 @@ package org.Cry_Legende.sHFastTournament;
 import org.Cry_Legende.sHFastTournament.network.NetBus;
 import org.Cry_Legende.sHFastTournament.network.ShNetworkBus;
 import org.Cry_Legende.sHFastTournament.network.TournamentDatabase;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -60,6 +64,32 @@ public class SHFastTournament extends JavaPlugin {
             network.disable();
         }
         getLogger().info("SHFastTournament désactivé.");
+    }
+
+    /**
+     * Relit config.yml et messages.yml. Les deux fichiers sont lus avant de remplacer quoi que ce soit : si l'un est
+     * invalide, l'ancienne configuration reste active. Les définitions de tournois sont remplacées dans le gestionnaire
+     * existant ; un tournoi en cours finit avec les anciennes. wins.yml et la base ne sont pas touchés ; la section
+     * reseau n'est lue qu'au démarrage.
+     *
+     * @return null si tout est rechargé, sinon le fichier et l'erreur
+     */
+    String reload() {
+        try {
+            new YamlConfiguration().load(new File(getDataFolder(), "config.yml"));
+        } catch (IOException | InvalidConfigurationException e) {
+            return "config.yml : " + Messages.describe(e);
+        }
+        FileConfiguration loadedMessages;
+        try {
+            loadedMessages = Messages.read(this);
+        } catch (IOException | InvalidConfigurationException e) {
+            return "messages.yml : " + Messages.describe(e);
+        }
+        reloadConfig();
+        Messages.apply(loadedMessages);
+        tournamentManager.loadTournaments();
+        return null;
     }
 
     /**

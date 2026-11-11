@@ -22,15 +22,11 @@ public class TournamentTabCompleter implements TabCompleter {
         // Premier argument : sous-commandes
         if (args.length == 1) {
             String partial = args[0].toLowerCase();
-            List<String> subCommands = new ArrayList<>(Arrays.asList("start", "stop", "info", "status", "custom"));
-            // L'importation des victoires ne sert qu'avec SHNetwork
-            if (SHFastTournament.getInstance().network() != null) {
-                subCommands.add("import");
-            }
-            StringUtil.copyPartialMatches(partial, subCommands, completions);
+            // Seulement les sous-commandes permises ; l'importation des victoires ne sert qu'avec SHNetwork
+            StringUtil.copyPartialMatches(partial, TournamentCommand.allowed(sender), completions);
         }
         // Deuxième argument pour "start" : IDs des tournois disponibles
-        else if (args.length == 2 && args[0].equalsIgnoreCase("start")) {
+        else if (args.length == 2 && args[0].equalsIgnoreCase("start") && sender.hasPermission(TournamentCommand.PERMISSION_PREFIX + "start")) {
             String partial = args[1].toLowerCase();
             List<String> tournamentIds = SHFastTournament.getInstance().getTournamentManager()
                 .getTournaments().keySet().stream()
@@ -39,14 +35,14 @@ public class TournamentTabCompleter implements TabCompleter {
             StringUtil.copyPartialMatches(partial, tournamentIds, completions);
         }
         // Troisième argument pour "start" : suggestion de "force"
-        else if (args.length == 3 && args[0].equalsIgnoreCase("start")) {
+        else if (args.length == 3 && args[0].equalsIgnoreCase("start") && sender.hasPermission(TournamentCommand.PERMISSION_PREFIX + "start")) {
             String partial = args[2].toLowerCase();
             if ("force".startsWith(partial)) {
                 completions.add("force");
             }
         }
         // Deuxième argument pour "custom" : ID du tournoi CUSTOM actif
-        else if (args.length == 2 && args[0].equalsIgnoreCase("custom")) {
+        else if (args.length == 2 && args[0].equalsIgnoreCase("custom") && sender.hasPermission(TournamentCommand.PERMISSION_PREFIX + "custom")) {
             String partial = args[1].toLowerCase();
             ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
             if (active != null && "CUSTOM".equalsIgnoreCase(active.getTournament().getType())) {
@@ -57,7 +53,7 @@ public class TournamentTabCompleter implements TabCompleter {
             }
         }
         // Troisième argument pour "custom" : noms des joueurs en ligne
-        else if (args.length == 3 && args[0].equalsIgnoreCase("custom")) {
+        else if (args.length == 3 && args[0].equalsIgnoreCase("custom") && sender.hasPermission(TournamentCommand.PERMISSION_PREFIX + "custom")) {
             String partial = args[2].toLowerCase();
             List<String> onlinePlayers = Bukkit.getOnlinePlayers().stream()
                 .map(Player::getName)

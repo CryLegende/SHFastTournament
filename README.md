@@ -44,14 +44,14 @@ Quand `SHNetwork` est installé et que `reseau.actif` vaut `true`, tous les serv
   4. il réserve la récompense de chaque joueur (`paid` de 0 à 1, un seul appelant gagne) puis envoie ses commandes par `runFor` de SHNetwork : exécutées une seule fois, sur le serveur où se trouve le joueur, ou à sa prochaine connexion s'il est parti. La ligne SHLogs (`recompenses`) est écrite sur le meneur.
 - **Si le meneur tombe.** Un autre serveur devient meneur en quelques secondes. Il reprend les tournois `RUNNING` (il les conclut à leur heure de fin) et `ENDING` (il termine ce qui ne l'est pas : classement déjà écrit, récompenses non réservées). Il ne lance jamais de second planificateur : l'ancien meneur arrête le sien en perdant la tâche, et la base refuse un deuxième tournoi ouvert. Le délai avant le prochain tournoi automatique repart à zéro. Un tournoi sans conclusion plus de `reseau.abandon-apres-minutes` minutes après son heure de fin (aucun meneur pendant tout ce temps) est abandonné sans récompense.
 - **Arrêt d'un serveur.** Il envoie ses points en attente et ne touche pas au tournoi : il continue sur les autres serveurs, et le serveur le retrouve en redémarrant s'il n'est pas terminé. Un redémarrage de tous les serveurs en plein tournoi ne l'interrompt donc pas.
-- **Commandes.** `/tournament start`, `stop`, `custom` et `status` marchent depuis n'importe quel serveur. `start` et `stop` s'appuient sur la base (un seul tournoi ouvert, une seule conclusion), donc elles marchent même sans meneur ; `start ... force` arrête le tournoi ouvert puis en lance un autre. `custom <id> <joueur>` ajoute le point à un joueur connecté sur ce serveur ou sur un autre (`SHCrates` l'appelle pour `BOX` depuis n'importe quel serveur ; `SHMiniKOTH` et `SHEasterBunny` sont sur Opale-1).
+- **Commandes.** `/shfasttournament start`, `stop`, `custom` et `status` marchent depuis n'importe quel serveur. `start` et `stop` s'appuient sur la base (un seul tournoi ouvert, une seule conclusion), donc elles marchent même sans meneur ; `start ... force` arrête le tournoi ouvert puis en lance un autre. `custom <id> <joueur>` ajoute le point à un joueur connecté sur ce serveur ou sur un autre (`SHCrates` l'appelle pour `BOX` depuis n'importe quel serveur ; `SHMiniKOTH` et `SHEasterBunny` sont sur Opale-1).
 - **Messages perdus.** Les serveurs relisent la base à chaque synchronisation : un `stop` perdu est rattrapé, un `start` perdu l'est dans les `reseau.veille-secondes` secondes. Un `end` perdu laisse la boss bar à 00:00 jusqu'à 30 secondes après la conclusion prévue, puis le serveur ferme son tournoi sans classement (les récompenses sont données quand même).
 
 La section `tournaments` et les récompenses de `settings` doivent être les mêmes sur tous les serveurs (le meneur donne les récompenses de sa config ; les autres serveurs comptent selon la leur). Les horloges des serveurs doivent être synchronisées (même machine ou NTP) : l'heure de fin est une heure absolue.
 
 ### Victoires
 
-Avec SHNetwork, les victoires sont dans la table `fasttournament_wins (uuid, name, wins)`, incrémentées par `wins = wins + 1` dans la transaction du classement. `%shfasttournament_wins%` lit un cache de `reseau.cache-victoires-secondes` secondes, rempli à la connexion du joueur : il ne fait jamais attendre le serveur. `wins.yml` n'est plus écrit dans ce mode. `/tournament import` en reprend les totaux dans la base (une fois, sur un serveur) : un joueur qui a déjà une ligne n'est pas modifié, donc la commande peut être relancée sans rien compter deux fois.
+Avec SHNetwork, les victoires sont dans la table `fasttournament_wins (uuid, name, wins)`, incrémentées par `wins = wins + 1` dans la transaction du classement. `%shfasttournament_wins%` lit un cache de `reseau.cache-victoires-secondes` secondes, rempli à la connexion du joueur : il ne fait jamais attendre le serveur. `wins.yml` n'est plus écrit dans ce mode. `/shfasttournament import` en reprend les totaux dans la base (une fois, sur un serveur) : un joueur qui a déjà une ligne n'est pas modifié, donc la commande peut être relancée sans rien compter deux fois.
 
 ### Différences avec un serveur seul
 
@@ -65,27 +65,36 @@ Avec SHNetwork, les victoires sont dans la table `fasttournament_wins (uuid, nam
 1. Base : `mysql -u root < sql/schema.sql` (crée les quatre tables dans `bo_net` et l'utilisateur `shfasttournament`). Remplacer `CHANGE_ME` par le mot de passe.
 2. `plugins/SHFastTournament/config.yml`, section `reseau` : `url` et `mot-de-passe`. La même base et la même config sur tous les serveurs.
 3. Poser le jar sur chaque serveur, avec SHNetwork. Le jar charge HikariCP et le pilote MariaDB par `libraries:` (le serveur ne les embarque pas) ; sans SHNetwork, ils ne sont pas utilisés.
-4. Une fois, sur un serveur : `/tournament import`.
+4. Une fois, sur un serveur : `/shfasttournament import`.
 
 Au démarrage, la console indique `SHNetwork détecté : un seul tournoi pour tout le réseau`. `/shnetwork info` donne le serveur meneur de `shfasttournament`.
 
 ### Essayer rapidement
 
-- `/tournament start <id>` sur n'importe quel serveur lance le tournoi partout, sans tenir compte de `minimum-players`. `/tournament status` donne le même résultat sur les deux serveurs.
-- `/tournament custom <id> <joueur>` sur un tournoi `CUSTOM` ajoute un point au joueur, où qu'il soit.
+- `/shfasttournament start <id>` sur n'importe quel serveur lance le tournoi partout, sans tenir compte de `minimum-players`. `/shfasttournament status` donne le même résultat sur les deux serveurs.
+- `/shfasttournament custom <id> <joueur>` sur un tournoi `CUSTOM` ajoute un point au joueur, où qu'il soit.
 - Arrêter le serveur meneur : l'autre reprend la tâche, conclut le tournoi à son heure de fin et recommence à décompter `interval`.
 
 ## Commandes
 
-| Commande | Alias | Description | Permission |
-|---|---|---|---|
-| `/tournament` | — | Commande principale pour gérer les mini tournois : `start <id> [force]`, `stop`, `info`, `status`, `custom <id> <joueur>`, et `import` (avec SHNetwork : reprend les victoires de `wins.yml` dans la base du réseau). | `shfasttournament.admin` |
+Alias de `/shfasttournament` : `/tournament` (utilisé par les caisses et le KOTH, qui appellent aussi `shfasttournament:tournament custom ...`). Sans argument, la commande affiche les sous-commandes que l'expéditeur a le droit d'utiliser ; elle marche depuis la console.
+
+| Commande | Description | Permission |
+|---|---|---|
+| `/shfasttournament start <id> [force]` | Démarre un tournoi (`force` arrête celui en cours). | `shfasttournament.admin.start` |
+| `/shfasttournament stop` | Arrête le tournoi en cours. | `shfasttournament.admin.stop` |
+| `/shfasttournament info` | Liste les tournois activés. | `shfasttournament.admin.info` |
+| `/shfasttournament status` | Statut du tournoi en cours. | `shfasttournament.admin.status` |
+| `/shfasttournament custom <id> <joueur>` | Ajoute un point à un joueur dans un tournoi `CUSTOM`. | `shfasttournament.admin.custom` |
+| `/shfasttournament import` | Avec SHNetwork : reprend les victoires de `wins.yml` dans la base du réseau. | `shfasttournament.admin.import` |
+| `/shfasttournament reload` | Relit `config.yml` et `messages.yml` (réglages, récompenses, tournois). Un tournoi en cours finit avec ses anciennes définitions ; si un fichier est invalide, l'ancienne configuration reste active ; `wins.yml` et la base ne sont pas touchés ; la section `reseau` n'est lue qu'au démarrage. | `shfasttournament.admin.reload` |
 
 ## Permissions
 
 | Permission | Description | Par défaut |
 |---|---|---|
-| `shfasttournament.admin` | Permet de gérer les mini tournois via /tournament | `op` |
+| `shfasttournament.admin` | Toutes les commandes d'administration. | `op` |
+| `shfasttournament.admin.<start\|stop\|info\|status\|custom\|import\|reload>` | Une permission par sous-commande. | `op` |
 
 ## Configuration
 

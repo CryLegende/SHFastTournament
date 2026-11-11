@@ -36,20 +36,20 @@ no-winner: '&7&l« &c&lSH &8&l» &fPersonne n''a participé à ce tournoi'
 # Message de l'action bar. Vide = désactivé. Variables : %points% %points-name% %time%
 actionbar: ''
 boss-bar: '&5&lMini tournoi: &e%event-name% &7- &e%points% &7%points-name% - (&f%time%&7)'
-unknown-command: '&7&l« &f&lSH &8&l» &fCommande inconnue, essayer autre chose.'
 no-perm: '&7&l« &f&lSH &8&l» &fCommande inconnue, essayer autre chose.'
 stop-success: '&7&l« &a&lSH &8&l» &7Le mini tournoi en cours a été arrêté.'
 start-forced: '&7&l« &e&lSH &8&l» &7Le tournoi en cours a été arrêté par la commande &eforce&7.'
-usage: '&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament <start|stop|info|status|custom>&7.'
-usage-start: '&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament start <id> [force]&7.'
-usage-custom: '&7&l« &c&lSH &8&l» &7Utilisation : &c/tournament custom <id> <player>&7.'
+# %subs% : sous-commandes que l'expéditeur a le droit d'utiliser.
+usage: '&7&l« &c&lSH &8&l» &7Utilisation : &c/shfasttournament <%subs%>&7.'
+usage-start: '&7&l« &c&lSH &8&l» &7Utilisation : &c/shfasttournament start <id> [force]&7.'
+usage-custom: '&7&l« &c&lSH &8&l» &7Utilisation : &c/shfasttournament custom <id> <player>&7.'
 info-header: '&7&l« &e&lSH &8&l» &7Liste des tournois disponibles :'
 info-line: '&7- &e%event-id%&7 : %event-name%'
 custom-offline: '&7&l« &c&lSH &8&l» &7Le joueur &c%player%&7 n''est pas en ligne.'
 custom-point-added: '&7&l« &a&lSH &8&l» &7Un point a été ajouté pour &a%player%&7.'
 stop-fail: '&7&l« &c&lSH &8&l» &7Aucun tournoi n''est en cours.'
 start-success: '&7&l« &a&lSH &8&l» &7Le tournoi &a%event-name%&7 a commencé.'
-already-playing: '&7&l« &c&lSH &8&l» &7Un tournoi est déjà en cours. Utilisez &c/tournament start %event-id% force&7 pour forcer son démarrage.'
+already-playing: '&7&l« &c&lSH &8&l» &7Un tournoi est déjà en cours. Utilisez &c/shfasttournament start %event-id% force&7 pour forcer son démarrage.'
 not-an-id: '&7&l« &c&lSH &8&l» &7Le tournoi d''id &c%event-id%&7 n''existe pas.'
 status-no-active: '&7&l« &c&lSH &8&l» &cAucun mini tournoi en cours.'
 status-no-leader: Aucun
@@ -65,11 +65,16 @@ tournament-status:
 - '&f███&8█&f█&8█&f█&8█&f█ &7Leader: &e%leader% &8- &e%leader-points% &7%points-name%'
 - '&f█████████'
 
-# Avec SHNetwork : la base du réseau ne répond pas à /tournament start ou stop.
+# Avec SHNetwork : la base du réseau ne répond pas à /shfasttournament start ou stop.
 network-error: '&7&l« &c&lSH &8&l» &7La base du réseau ne répond pas : &cdemande annulée&7, voir la console.'
-# /tournament import : terminée. %imported% = joueurs ajoutés à la base, %present% = joueurs qui y avaient déjà un total.
+# /shfasttournament import : terminée. %imported% = joueurs ajoutés à la base, %present% = joueurs qui y avaient déjà un total.
 import-success: '&7&l« &a&lSH &8&l» &a%imported%&7 joueurs importés dans la base du réseau (&a%present%&7 déjà présents).'
-# /tournament import sans SHNetwork.
+# /shfasttournament import sans SHNetwork.
 import-unavailable: '&7&l« &6&lSH &8&l» &7L''importation ne sert qu''&6avec SHNetwork&7 : ce serveur compte les victoires dans wins.yml.'
-# /tournament import : base injoignable.
+# /shfasttournament import : base injoignable.
 import-error: '&7&l« &c&lSH &8&l» &7Importation &céchouée&7 : base injoignable, voir la console.'
+
+# /shfasttournament reload.
+reloaded: '&7&l« &a&lSH &8&l» &7Configuration et messages &arechargés&7.'
+# %error% : le fichier et la cause. L'ancienne configuration reste active.
+reload-failed: '&7&l« &c&lSH &8&l» &7Rechargement annulé, l''ancienne configuration reste active : &c%error%&7.'
