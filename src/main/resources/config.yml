@@ -360,7 +360,7 @@ tournaments:
     enabled: true
     time: 5
     display-name: Cookie mobile
-    description: Touchez le cookie du spawn (/warp cookie), il change de place tous les 3 clics !
+    description: Touchez le cookie du spawn ! (&d/warp cookie&7)
     type: PLACEHOLDER
     objective: '%cookieclicker_clickerclicks%'
     blacklist: NONE
