@@ -18,6 +18,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ActiveTournament extends BukkitRunnable {
 
@@ -46,6 +47,11 @@ public class ActiveTournament extends BukkitRunnable {
     private final Set<BlockKey> placedBlocks = ConcurrentHashMap.newKeySet();
     // Positions déjà comptées en BLOCK_PLACE : reposer au même endroit ne rapporte plus
     private final Set<BlockKey> scoredPlacements = ConcurrentHashMap.newKeySet();
+    // Tournoi PLACEHOLDER : dernière valeur lue de chaque joueur connecté (nul pour les autres types)
+    private final PlaceholderGains gains;
+    private boolean placeholderWarned = false;
+    // Les commandes de fin ne partent qu'une fois, quelle que soit la façon dont le tournoi se ferme
+    private final AtomicBoolean endCommandsRun = new AtomicBoolean();
 
     /** Position d'un bloc, indépendante de l'objet Block (qui ne doit pas être conservé). */
     record BlockKey(UUID world, int x, int y, int z) {
@@ -70,9 +76,67 @@ public class ActiveTournament extends BukkitRunnable {
         this.startTime = startTime;
         this.endTime = startTime + durationMillis;
         scores.onChange(() -> ranksDirty = true);
+        this.gains = tournament.isPlaceholder() ? new PlaceholderGains() : null;
         if (announce) {
             announceStart();
         }
+        runCommands(tournament.getStartCommands(), "début");
+        // Valeurs de départ des joueurs déjà connectés : leurs gains comptent dès maintenant
+        pollPlaceholder();
+    }
+
+    /**
+     * Commandes console du tournoi. %seconds% = secondes restantes (pour qu'une commande de début s'arrête d'elle-même
+     * à la fin, même si la commande de fin ne part pas), %tournament% = id du tournoi.
+     */
+    private void runCommands(List<String> commands, String when) {
+        String seconds = String.valueOf(Math.max(1, getRemainingSeconds()));
+        for (String raw : commands) {
+            String cmd = raw.trim().replace("%seconds%", seconds).replace("%tournament%", tournament.getId());
+            if (cmd.startsWith("/")) {
+                cmd = cmd.substring(1);
+            }
+            if (cmd.isEmpty()) {
+                continue;
+            }
+            try {
+                if (!Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd)) {
+                    SHFastTournament.getInstance().getLogger().warning("Commande de " + when + " du tournoi " + tournament.getId() + " refusée '" + cmd + "'");
+                }
+            } catch (RuntimeException e) {
+                SHFastTournament.getInstance().getLogger().warning("Commande de " + when + " du tournoi " + tournament.getId() + " en échec '" + cmd + "' : " + e.getMessage());
+            }
+        }
+    }
+
+    /** Commandes de fin, une seule fois (fin normale, arrêt, remplacement par un autre tournoi, arrêt du plugin). */
+    private void runEndCommands() {
+        if (endCommandsRun.compareAndSet(false, true)) {
+            runCommands(tournament.getEndCommands(), "fin");
+        }
+    }
+
+    /** Tournoi PLACEHOLDER, fil principal : ajoute à chaque joueur connecté ce que son placeholder a gagné depuis la dernière lecture. */
+    private void pollPlaceholder() {
+        if (gains == null) {
+            return;
+        }
+        if (!Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            if (!placeholderWarned) {
+                placeholderWarned = true;
+                SHFastTournament.getInstance().getLogger().warning("Tournoi " + tournament.getId() + " de type PLACEHOLDER sans PlaceholderAPI : aucun point ne sera compté.");
+            }
+            return;
+        }
+        Set<UUID> online = new HashSet<>();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            online.add(player.getUniqueId());
+            double gain = gains.read(player.getUniqueId(), player, PlaceholderHook.parse(player, tournament.getObjective()));
+            if (gain > 0) {
+                addScore(player, gain);
+            }
+        }
+        gains.retain(online);
     }
 
     /** Son et messages de début. */
@@ -309,6 +373,7 @@ public class ActiveTournament extends BukkitRunnable {
 
     @Override
     public void run() {
+        pollPlaceholder();
         int remainingSeconds = getRemainingSeconds();
         if (remainingSeconds <= 0 && network != null) {
             // Tournoi partagé : le meneur conclut et annonce la fin à tous les serveurs, celui-ci attend son annonce
@@ -327,6 +392,7 @@ public class ActiveTournament extends BukkitRunnable {
                 }
                 playerBossBars.clear();
                 SHFastTournament.getInstance().getTournamentManager().setActiveTournament(null);
+                runEndCommands();
             }
             return;
         }
@@ -609,5 +675,6 @@ public class ActiveTournament extends BukkitRunnable {
             bossBar.removeAll();
         }
         playerBossBars.clear();
+        runEndCommands();
     }
 }

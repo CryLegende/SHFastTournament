@@ -1,5 +1,6 @@
 package org.Cry_Legende.sHFastTournament;
 
+import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.entity.Player;
 
@@ -34,6 +35,11 @@ public class PlaceholderHook extends PlaceholderExpansion {
     @Override
     public String getVersion() {
         return plugin.getDescription().getVersion();
+    }
+
+    /** Texte avec les placeholders du joueur remplacés (PlaceholderAPI doit être activé). */
+    static String parse(Player player, String text) {
+        return PlaceholderAPI.setPlaceholders(player, text);
     }
 
     @Override

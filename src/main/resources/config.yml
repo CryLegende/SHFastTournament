@@ -130,12 +130,18 @@ reseau:
 #   display-name      Nom affiché (codes couleur avec &).
 #   description       Description affichée aux joueurs.
 #   type              BLOCK_BREAK, BLOCK_PLACE, KILL_ENTITY, TAKE_DAMAGE, MAKE_DAMAGE, FISHING, JUMP,
-#                     WALK, ITEM_PICKUP, SMELT, CROPS_BREAK, CRAFT ou CUSTOM (points ajoutés par /shfasttournament custom).
-#   objective         "NONE" ou identifiants séparés par des virgules (blocs, entités ou items selon le type).
+#                     WALK, ITEM_PICKUP, SMELT, CROPS_BREAK, CRAFT, CUSTOM (points ajoutés par /shfasttournament custom)
+#                     ou PLACEHOLDER (points = ce que gagne le placeholder 'objective' pendant le tournoi, lu
+#                     chaque seconde pour chaque joueur connecté ; demande PlaceholderAPI).
+#   objective         "NONE" ou identifiants séparés par des virgules (blocs, entités ou items selon le type) ;
+#                     pour PLACEHOLDER, le placeholder entre % (exemple : '%cookieclicker_clickerclicks%').
 #   blacklist         "NONE" ou identifiants exclus, séparés par des virgules.
 #   points-name       Unité des points dans les messages.
 #   boss-bar          BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW ou NONE.
-#   worlds-blacklist  Mondes où rien ne compte (liste, à omettre si aucun).
+#   worlds-blacklist  Mondes où rien ne compte (liste, à omettre si aucun). Sans effet pour PLACEHOLDER.
+#   start-commands    Commandes console au début du tournoi, sur chaque serveur qui le suit (liste, facultatif).
+#                     %seconds% = secondes restantes, %tournament% = id du tournoi.
+#   end-commands      Commandes console à la fin du tournoi, qu'il se termine, soit arrêté ou remplacé (liste, facultatif).
 tournaments:
   pro-peche:
     enabled: false
@@ -350,6 +356,20 @@ tournaments:
     blacklist: NONE
     points-name: seconde(s) de règne
     boss-bar: YELLOW
+  Cookie-mobile:
+    enabled: true
+    time: 5
+    display-name: Cookie mobile
+    description: Touchez le cookie du spawn (/warp cookie), il change de place tous les 3 clics !
+    type: PLACEHOLDER
+    objective: '%cookieclicker_clickerclicks%'
+    blacklist: NONE
+    points-name: clic(s) sur le cookie
+    boss-bar: YELLOW
+    start-commands:
+    - shcookieclicker moving %seconds%
+    end-commands:
+    - shcookieclicker moving off
 
   Craft-citrouilles:
     enabled: true

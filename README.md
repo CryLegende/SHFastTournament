@@ -96,6 +96,22 @@ Alias de `/shfasttournament` : `/tournament` (utilisé par les caisses et le KOT
 | `shfasttournament.admin` | Toutes les commandes d'administration. | `op` |
 | `shfasttournament.admin.<start\|stop\|info\|status\|custom\|import\|reload>` | Une permission par sous-commande. | `op` |
 
+## Tournois PLACEHOLDER et commandes de début et de fin
+
+- `type: PLACEHOLDER` : les points d'un joueur sont ce que gagne le placeholder `objective` pendant le tournoi
+  (exemple : `'%cookieclicker_clickerclicks%'`). Il est lu chaque seconde pour chaque joueur connecté (et au début du
+  tournoi) ; la première lecture sert de départ. Un nombre au format `1,234,567`, `1 234 567` ou coloré est lu ; une
+  valeur illisible (`N/A`, placeholder inconnu) ou qui baisse ne retire rien. Une reconnexion repart d'une nouvelle
+  lecture : ce que le joueur a gagné ailleurs entre-temps ne compte pas ici. `worlds-blacklist` ne s'applique pas.
+  Demande PlaceholderAPI.
+- `start-commands` / `end-commands` : commandes console lancées au début et à la fin du tournoi, sur chaque serveur qui le
+  suit. `%seconds%` = secondes restantes (une commande de début peut ainsi s'arrêter d'elle-même), `%tournament%` = id.
+  Les commandes de fin partent une seule fois, que le tournoi se termine, soit arrêté (`stop`), remplacé (`start ...
+  force`) ou que le plugin s'arrête.
+- Exemple, le tournoi `Cookie-mobile` : `PLACEHOLDER` sur les clics du Cookie Clicker, avec
+  `shcookieclicker moving %seconds%` au début et `shcookieclicker moving off` à la fin (le cookie change de place
+  tous les 3 clics : il faut viser, un autoclic ne marque rien).
+
 ## Configuration
 
 Fichiers par défaut repris du serveur (secrets remplacés par `CHANGE_ME`). Cliquez sur un fichier pour l'ouvrir :

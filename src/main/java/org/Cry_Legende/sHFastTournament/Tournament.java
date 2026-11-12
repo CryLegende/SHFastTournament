@@ -20,6 +20,9 @@ public class Tournament {
     private final String pointsName;
     private final String bossBar;
     private final List<String> worldsBlacklist;
+    // Commandes console du début et de la fin du tournoi, sur chaque serveur qui le suit
+    private final List<String> startCommands;
+    private final List<String> endCommands;
     // Listes d'IDs lues une fois (et non à chaque événement) : en majuscules, sans espaces autour des virgules
     private final boolean anyObjective;
     private final Set<String> objectiveIds;
@@ -37,6 +40,8 @@ public class Tournament {
         this.pointsName = section.getString("points-name", "points");
         this.bossBar = section.getString("boss-bar", "NONE");
         this.worldsBlacklist = section.getStringList("worlds-blacklist");
+        this.startCommands = List.copyOf(section.getStringList("start-commands"));
+        this.endCommands = List.copyOf(section.getStringList("end-commands"));
         this.anyObjective = "NONE".equalsIgnoreCase(objective);
         this.objectiveIds = parseIds(objective);
         this.blacklistIds = parseIds(blacklist);
@@ -108,5 +113,18 @@ public class Tournament {
 
     public List<String> getWorldsBlacklist() {
         return worldsBlacklist;
+    }
+
+    public List<String> getStartCommands() {
+        return startCommands;
+    }
+
+    public List<String> getEndCommands() {
+        return endCommands;
+    }
+
+    /** Tournoi dont les points sont la hausse d'un placeholder ('objective'). */
+    public boolean isPlaceholder() {
+        return "PLACEHOLDER".equalsIgnoreCase(type);
     }
 }

@@ -7,6 +7,7 @@ author: Cry_Legende
 softdepend:
   - SHLogs
   - SHNetwork
+  - PlaceholderAPI
 # Chargées par Paper dans le classloader du plugin : le serveur n'embarque que les pilotes MySQL et SQLite.
 # Seul le mode réseau (points, classement et victoires en MariaDB) s'en sert.
 libraries:
