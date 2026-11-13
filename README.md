@@ -114,7 +114,7 @@ Alias de `/shfasttournament` : `/tournament` (utilisé par les caisses et le KOT
 
 ## Configuration
 
-Fichiers par défaut repris du serveur (secrets remplacés par `CHANGE_ME`). Cliquez sur un fichier pour l'ouvrir :
+Fichiers par défaut, avec des valeurs d'exemple. Cliquez sur un fichier pour l'ouvrir :
 
 <pre>
 plugins/SHFastTournament/
