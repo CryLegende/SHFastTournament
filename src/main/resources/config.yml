@@ -55,7 +55,7 @@ settings:
     - shwc %player% ntdluckyblock give %player% YELLOW 2
     - shwc %player% shcrates givekey %player% ordinaire 2 physical
     - shnetworklevel exp give %player% 10
-    - sm %player% &b+10 exp de network &7(/network)
+    - sm %player% &b+10 exp de network%shnetworklevel_bonus_texte% &7(/network)
     top2:
     - sm %player% &7&l« &e&lSH &8&l» &7Vous avez fini &e2eme &7 !
     - 'sm %player% &7(Récompenses: 10k SHCoins, 1 Luckyblock Jaune, 1 Clé Ordinaire)'
@@ -63,13 +63,13 @@ settings:
     - shwc %player% ntdluckyblock give %player% YELLOW 1
     - shwc %player% shcrates givekey %player% ordinaire 1 physical
     - shnetworklevel exp give %player% 5
-    - sm %player% &b+5 exp de network &7(/network)
+    - sm %player% &b+5 exp de network%shnetworklevel_bonus_texte% &7(/network)
     top3:
     - sm %player% &7&l« &6&lSH &8&l» &7Vous avez fini &63eme &7 !
     - 'sm %player% &7(Récompense: 1 Clé Ordinaire)'
     - shwc %player% shcrates givekey %player% ordinaire 1 physical
     - shnetworklevel exp give %player% 5
-    - sm %player% &b+5 exp de network &7(/network)
+    - sm %player% &b+5 exp de network%shnetworklevel_bonus_texte% &7(/network)
     participation:
     - 'sm %player% &7(Récompense de participation: 5k SHCoins)'
     - eco give %player% 5000
