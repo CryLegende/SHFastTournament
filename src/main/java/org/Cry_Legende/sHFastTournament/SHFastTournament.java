@@ -52,7 +52,6 @@ public class SHFastTournament extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new TournamentListener(), this);
 
-        getLogger().info("SHFastTournament activé.");
     }
 
     @Override
@@ -63,7 +62,6 @@ public class SHFastTournament extends JavaPlugin {
         if (network != null) {
             network.disable();
         }
-        getLogger().info("SHFastTournament désactivé.");
     }
 
     /**
