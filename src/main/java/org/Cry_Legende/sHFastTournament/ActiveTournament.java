@@ -47,6 +47,8 @@ public class ActiveTournament extends BukkitRunnable {
     private final Set<BlockKey> placedBlocks = ConcurrentHashMap.newKeySet();
     // Positions déjà comptées en BLOCK_PLACE : reposer au même endroit ne rapporte plus
     private final Set<BlockKey> scoredPlacements = ConcurrentHashMap.newKeySet();
+    // Tournoi JUMP : instant du dernier saut compté de chaque joueur
+    private final JumpFilter jumpFilter = new JumpFilter();
     // Tournoi PLACEHOLDER : dernière valeur lue de chaque joueur connecté (nul pour les autres types)
     private final PlaceholderGains gains;
     private boolean placeholderWarned = false;
@@ -217,6 +219,10 @@ public class ActiveTournament extends BukkitRunnable {
 
     public double getScore(Player player) {
         return scores.get(player.getUniqueId());
+    }
+
+    JumpFilter jumpFilter() {
+        return jumpFilter;
     }
 
     /** Retient un bloc posé par un joueur pendant le tournoi. */

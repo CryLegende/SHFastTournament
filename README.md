@@ -96,6 +96,14 @@ Alias de `/shfasttournament` : `/tournament` (utilisé par les caisses et le KOT
 | `shfasttournament.admin` | Toutes les commandes d'administration. | `op` |
 | `shfasttournament.admin.<start\|stop\|info\|status\|custom\|import\|reload>` | Une permission par sous-commande. | `op` |
 
+## Tournois JUMP
+
+`type: JUMP` compte les vrais sauts (événement de saut de Paper), pas les montées d'escaliers ou de dalles, ni le vol.
+Un saut ne compte que si le joueur est en survie ou en aventure, ne vole pas, ne plane pas, n'est ni sur une monture,
+ni dans l'eau, ni sur une échelle, s'il a un bloc sous les pieds et si sa montée reste celle d'un saut (rebonds sur
+slime, souffle et canons ne comptent pas). Deux sauts comptés d'un même joueur sont espacés d'au moins
+`settings.jump.min-interval-ticks`. Les réglages sont dans `settings.jump` et suivis par `reload`.
+
 ## Tournois PLACEHOLDER et commandes de début et de fin
 
 - `type: PLACEHOLDER` : les points d'un joueur sont ce que gagne le placeholder `objective` pendant le tournoi

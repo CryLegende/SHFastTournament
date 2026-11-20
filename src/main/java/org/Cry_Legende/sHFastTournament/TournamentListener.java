@@ -1,9 +1,15 @@
 package org.Cry_Legende.sHFastTournament;
 
+import com.destroystokyo.paper.event.player.PlayerJumpEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
@@ -59,6 +65,7 @@ public class TournamentListener implements Listener {
         ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
         if (active == null) return;
         active.detachBossBar(event.getPlayer());
+        active.jumpFilter().forget(event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -218,16 +225,55 @@ public class TournamentListener implements Listener {
         active.addScore(player, event.getFinalDamage());
     }
 
+    /**
+     * Seuls les vrais sauts comptent : l'événement de saut de Paper (le joueur quitte le sol vers le haut)
+     * et non toute montée de 0,4 bloc, que font aussi les escaliers, les dalles et le vol.
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlayerMoveForJump(PlayerMoveEvent event) {
-        // Événement très fréquent : on sort d'abord s'il n'y a pas de tournoi de ce type
+    public void onPlayerJump(PlayerJumpEvent event) {
         ActiveTournament active = SHFastTournament.getInstance().getTournamentManager().getActiveTournament();
         if (active == null) return;
         Tournament tournament = active.getTournament();
         if (!"JUMP".equalsIgnoreCase(tournament.getType())) return;
-        if (event.getTo().getY() - event.getFrom().getY() <= 0.4) return;
-        if (tournament.getWorldsBlacklist().contains(event.getPlayer().getWorld().getName())) return;
-        active.addScore(event.getPlayer(), 1);
+        Player player = event.getPlayer();
+        if (tournament.getWorldsBlacklist().contains(player.getWorld().getName())) return;
+
+        ConfigurationSection jump = SHFastTournament.getInstance().getConfig().getConfigurationSection("settings.jump");
+        if (!countsAsJump(player, event.getFrom(), event.getTo(), jump)) return;
+
+        long minIntervalMillis = (jump == null ? 10 : Math.max(0, jump.getInt("min-interval-ticks", 10))) * 50L;
+        if (!active.jumpFilter().tryCount(player.getUniqueId(), System.currentTimeMillis(), minIntervalMillis)) return;
+        active.addScore(player, 1);
+    }
+
+    private static boolean countsAsJump(Player player, Location from, Location to, ConfigurationSection jump) {
+        List<String> modes = jump == null || !jump.isList("gamemodes")
+                ? List.of("SURVIVAL", "ADVENTURE") : jump.getStringList("gamemodes");
+        if (modes.stream().noneMatch(mode -> mode.equalsIgnoreCase(player.getGameMode().name()))) return false;
+        // Vol, planeur, monture, nage ou échelle : ce ne sont pas des sauts
+        if (player.isFlying() || player.isGliding() || player.isInsideVehicle()
+                || player.isSwimming() || player.isClimbing() || player.isInWater()) return false;
+
+        PotionEffect boost = player.getPotionEffect(PotionEffectType.JUMP_BOOST);
+        double maxRise = jump == null ? 0.5 : jump.getDouble("max-rise", 0.5);
+        if (!JumpFilter.riseIsJump(to.getY() - from.getY(), maxRise, boost == null ? 0 : boost.getAmplifier() + 1)) return false;
+
+        // Un client qui annonce un saut en l'air (vol sans autorisation) n'a rien sous les pieds
+        return standsOnSolid(from);
+    }
+
+    /** Vrai si un bloc plein ou partiel touche le dessous des pieds (centre et quatre coins). */
+    private static boolean standsOnSolid(Location feet) {
+        World world = feet.getWorld();
+        int y = (int) Math.floor(feet.getY() - 0.1);
+        for (double dx : new double[]{-0.25, 0, 0.25}) {
+            for (double dz : new double[]{-0.25, 0, 0.25}) {
+                int x = (int) Math.floor(feet.getX() + dx);
+                int z = (int) Math.floor(feet.getZ() + dz);
+                if (!world.getBlockAt(x, y, z).isPassable()) return true;
+            }
+        }
+        return false;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

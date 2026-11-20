@@ -40,6 +40,17 @@ settings:
   # Délai en secondes avant d'annoncer le tournoi en cours à un joueur qui se connecte.
   join-message-delay: 3
 
+  # Tournois de type JUMP : seul un vrai saut compte (pas les escaliers, les dalles, le vol ni les rebonds).
+  jump:
+    # Délai minimal entre deux sauts comptés pour un même joueur, en ticks (10 = la cadence de la touche saut maintenue).
+    min-interval-ticks: 10
+    # Montée maximale du premier déplacement d'un saut, en blocs (un saut normal monte de 0.42). Saut surélevé ajoute 0.1 par niveau.
+    max-rise: 0.5
+    # Modes de jeu dont les sauts comptent.
+    gamemodes:
+    - SURVIVAL
+    - ADVENTURE
+
   # Sons joués à tous les joueurs au début et à la fin d'un tournoi.
   sounds:
     tournament-start: ENTITY_EXPERIENCE_ORB_PICKUP
